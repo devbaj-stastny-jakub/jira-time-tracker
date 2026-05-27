@@ -12,7 +12,7 @@ function RootComponent() {
         <React.Fragment>
             <Outlet />
             {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-            <TanStackRouterDevtools />
+            <TanStackRouterDevtools position='top-right' />
         </React.Fragment>
     );
 }

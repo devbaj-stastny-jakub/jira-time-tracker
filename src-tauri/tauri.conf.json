@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "cz.jira.timetracker",
+  "productName": "com.timely.app",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.timely.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "cz.jira.timetracker",
+        "title": "Timely",
         "width": 800,
         "height": 600,
         "resizable": true,

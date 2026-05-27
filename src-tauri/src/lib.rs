@@ -5,7 +5,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 /// Keychain service + account under which the connection credentials are stored.
 /// A single entry holds the whole credential blob as JSON.
-const KEYRING_SERVICE: &str = "cz.jira.timetracker";
+const KEYRING_SERVICE: &str = "com.timely.app";
 const KEYRING_ACCOUNT: &str = "credentials";
 
 /// SQLite database (relative to the app's data dir) holding local time records.

@@ -3,7 +3,10 @@ import { Loader2, RefreshCw } from 'lucide-react';
 
 import { ApiError } from '@/shared/api-error';
 import { useProjects } from '@/shared/projects/useProjects';
+import { useSyncProjects } from '@/shared/projects/sync';
+import { useSyncMeta } from '@/shared/sync/sync-meta';
 import { useTags } from '@/shared/tags/useTags';
+import { useSyncTags } from '@/shared/tags/sync';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -33,36 +36,38 @@ function SettingsPage() {
 
 function ProjectsSection() {
     const query = useProjects();
+    const sync = useSyncProjects();
+    const meta = useSyncMeta();
     return (
         <SyncSection
             title="Jira projects"
             description="Projects pulled from your Jira instance."
             itemNoun="project"
             count={query.data?.length}
-            hasData={query.data !== undefined}
-            isFetching={query.isFetching}
-            isError={query.isError}
-            error={query.error}
-            updatedAt={query.dataUpdatedAt}
-            onSync={() => query.refetch()}
+            isSyncing={sync.isPending}
+            isError={sync.isError}
+            error={sync.error}
+            syncedAt={meta.data?.projectsSyncedAt}
+            onSync={() => sync.mutate()}
         />
     );
 }
 
 function TagsSection() {
     const query = useTags();
+    const sync = useSyncTags();
+    const meta = useSyncMeta();
     return (
         <SyncSection
             title="Timetracker tags"
             description="Tags pulled from the Everit Timetracker plugin."
             itemNoun="tag"
             count={query.data?.length}
-            hasData={query.data !== undefined}
-            isFetching={query.isFetching}
-            isError={query.isError}
-            error={query.error}
-            updatedAt={query.dataUpdatedAt}
-            onSync={() => query.refetch()}
+            isSyncing={sync.isPending}
+            isError={sync.isError}
+            error={sync.error}
+            syncedAt={meta.data?.tagsSyncedAt}
+            onSync={() => sync.mutate()}
         />
     );
 }
@@ -71,12 +76,13 @@ interface SyncSectionProps {
     title: string;
     description: string;
     itemNoun: string;
+    /** Persisted row count; undefined until the first DB read resolves. */
     count: number | undefined;
-    hasData: boolean;
-    isFetching: boolean;
+    isSyncing: boolean;
     isError: boolean;
     error: unknown;
-    updatedAt: number;
+    /** Last-synced time (epoch ms); undefined when never synced. */
+    syncedAt: number | undefined;
     onSync: () => void;
 }
 
@@ -85,11 +91,10 @@ function SyncSection({
     description,
     itemNoun,
     count,
-    hasData,
-    isFetching,
+    isSyncing,
     isError,
     error,
-    updatedAt,
+    syncedAt,
     onSync,
 }: SyncSectionProps) {
     return (
@@ -101,10 +106,10 @@ function SyncSection({
                     <Button
                         variant="outline"
                         size="sm"
-                        disabled={isFetching}
+                        disabled={isSyncing}
                         onClick={onSync}
                     >
-                        {isFetching ? (
+                        {isSyncing ? (
                             <>
                                 <Loader2 className="animate-spin" />
                                 Syncing…
@@ -122,10 +127,9 @@ function SyncSection({
                 <SectionStatus
                     itemNoun={itemNoun}
                     count={count}
-                    hasData={hasData}
                     isError={isError}
                     error={error}
-                    updatedAt={updatedAt}
+                    syncedAt={syncedAt}
                 />
             </CardContent>
         </Card>
@@ -135,61 +139,63 @@ function SyncSection({
 function SectionStatus({
     itemNoun,
     count,
-    hasData,
     isError,
     error,
-    updatedAt,
-}: Pick<
-    SyncSectionProps,
-    'itemNoun' | 'count' | 'hasData' | 'isError' | 'error' | 'updatedAt'
->) {
-    if (isError) {
-        const auth = error instanceof ApiError && error.isAuth;
-        const detail = error instanceof Error ? error.message : String(error);
-        return (
-            <div className="space-y-1">
-                <p className="text-destructive text-sm">
-                    {auth
-                        ? 'Token rejected — re-check your credentials in onboarding.'
-                        : "Couldn't sync. Check your connection and retry."}
-                </p>
-                {!auth ? (
-                    <p className="text-muted-foreground text-xs break-all">{detail}</p>
-                ) : null}
-            </div>
-        );
-    }
-
-    if (!hasData) {
-        return (
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-24" />
-            </div>
-        );
-    }
-
-    if (count === 0) {
-        return <p className="text-muted-foreground text-sm">No {itemNoun}s found.</p>;
-    }
-
+    syncedAt,
+}: Pick<SyncSectionProps, 'itemNoun' | 'count' | 'isError' | 'error' | 'syncedAt'>) {
+    // The persisted count/time come from the read query + sync-meta and survive a
+    // failed sync, so we show them whenever we have them and render a sync error
+    // *additively* beneath — telling the user they still have last-good data.
     return (
-        <div className="text-sm">
-            <p className="font-medium">
-                {count} {itemNoun}
-                {count === 1 ? '' : 's'} synced
+        <div className="space-y-2">
+            {count === undefined ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                </div>
+            ) : count === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                    No {itemNoun}s yet — sync to pull them in.
+                </p>
+            ) : (
+                <div className="text-sm">
+                    <p className="font-medium">
+                        {count} {itemNoun}
+                        {count === 1 ? '' : 's'} synced
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                        Last synced {formatRelative(syncedAt)}
+                    </p>
+                </div>
+            )}
+
+            {isError ? <SyncError error={error} /> : null}
+        </div>
+    );
+}
+
+/** The error from the most recent failed sync, shown beneath any existing data. */
+function SyncError({ error }: { error: unknown }) {
+    const auth = error instanceof ApiError && error.isAuth;
+    const detail = error instanceof Error ? error.message : String(error);
+    return (
+        <div className="space-y-1">
+            <p className="text-destructive text-sm">
+                {auth
+                    ? 'Token rejected — re-check your credentials in onboarding.'
+                    : "Couldn't sync. Check your connection and retry."}
             </p>
-            <p className="text-muted-foreground text-xs">
-                Last synced {formatRelative(updatedAt)}
-            </p>
+            {!auth ? (
+                <p className="text-muted-foreground text-xs break-all">{detail}</p>
+            ) : null}
         </div>
     );
 }
 
 const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 
-/** "5 minutes ago", "just now", … from a `dataUpdatedAt` timestamp. */
-function formatRelative(timestamp: number): string {
+/** "5 minutes ago", "just now", … from a `syncedAt` timestamp. */
+function formatRelative(timestamp: number | undefined): string {
     if (!timestamp) return 'never';
     const seconds = Math.round((timestamp - Date.now()) / 1000);
     if (Math.abs(seconds) < 60) return 'just now';

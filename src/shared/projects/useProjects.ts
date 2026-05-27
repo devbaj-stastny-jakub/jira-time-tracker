@@ -1,22 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { referenceDataCache } from '@/shared/cache';
-import { useCredentials } from '@/shared/credentials/useCredentials';
-import { getJiraProjects } from './api';
+import { listProjects } from './db';
 
 export const projectsKey = ['jira', 'projects'] as const;
 
 /**
- * The synced Jira projects. Auto-fetches on demand once credentials exist
- * (shared by the settings section and the worklog UI) and caches for a day.
- * Call `query.refetch()` to force an immediate re-sync.
+ * The persisted Jira projects, read from SQLite. This never hits the network:
+ * data is refreshed only by an explicit sync (Settings "Sync now" or the
+ * one-time onboarding sync), which invalidates this query. `staleTime: Infinity`
+ * keeps it from refetching on its own.
  */
 export function useProjects() {
-    const { data: credentials } = useCredentials();
     return useQuery({
         queryKey: projectsKey,
-        queryFn: () => getJiraProjects(credentials!),
-        enabled: !!credentials,
-        ...referenceDataCache,
+        queryFn: listProjects,
+        staleTime: Infinity,
     });
 }

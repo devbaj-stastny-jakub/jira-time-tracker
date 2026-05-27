@@ -3,6 +3,11 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { type Credentials, saveCredentials } from '@/shared/credentials/credentials';
 import { credentialsKey, useCredentials } from '@/shared/credentials/useCredentials';
+import { projectsKey } from '@/shared/projects/useProjects';
+import { syncProjects } from '@/shared/projects/sync';
+import { syncMetaKey } from '@/shared/sync/sync-meta';
+import { tagsKey } from '@/shared/tags/useTags';
+import { syncTags } from '@/shared/tags/sync';
 import {
     type ValidationResult,
     getJiraCurrentUser,
@@ -51,14 +56,28 @@ export function useValidateTokens() {
     });
 }
 
-/** Persists credentials to the keychain, then routes into the app. */
+/**
+ * Persists credentials to the keychain, runs a one-time initial sync so the app
+ * opens with projects/tags ready to classify, then routes in. The sync is
+ * awaited (the user expects setup work here) but never blocks entry: if it
+ * fails, we still navigate and the user can sync from Settings later.
+ */
 export function useCompleteOnboarding() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     return useMutation<void, Error, Credentials>({
-        mutationFn: saveCredentials,
+        mutationFn: async (credentials) => {
+            await saveCredentials(credentials);
+            // Don't let a sync failure strand onboarding — entry must proceed.
+            await Promise.allSettled([syncProjects(credentials), syncTags(credentials)]);
+        },
         onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: credentialsKey });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: credentialsKey }),
+                queryClient.invalidateQueries({ queryKey: projectsKey }),
+                queryClient.invalidateQueries({ queryKey: tagsKey }),
+                queryClient.invalidateQueries({ queryKey: syncMetaKey }),
+            ]);
             navigate({ to: '/' });
         },
     });

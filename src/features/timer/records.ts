@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 
-import { db } from './db-client';
+import { db } from '@/shared/db/client';
 import { recordTags, timeRecords } from './schema';
 
 /** A finished time record as the UI consumes it. Always start+end complete. */

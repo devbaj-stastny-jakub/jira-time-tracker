@@ -19,10 +19,16 @@ const DB_URL: &str = "sqlite:timetracker.db";
 /// stored as text. Records are created locally; pushing to Jira/Everit is a
 /// later, separate feature.
 fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "create_time_records_and_record_tags",
-        sql: "
+    vec![
+        Migration {
+            version: 1,
+            description: "create_time_records_and_record_tags",
+            // NOTE: this string's exact bytes are checksummed by sqlx. It was
+            // applied as v1 with the original 12/16-space indentation below, so it
+            // must stay byte-identical — reindenting it makes sqlx reject the whole
+            // migrate run ("previously applied but modified"). Keep it as-is even
+            // though it no longer lines up with the surrounding (deeper) Rust.
+            sql: "
             CREATE TABLE time_records (
                 id            TEXT PRIMARY KEY NOT NULL,
                 project_id    TEXT NOT NULL,
@@ -40,8 +46,31 @@ fn migrations() -> Vec<Migration> {
             );
             CREATE INDEX idx_time_records_start_at ON time_records(start_at);
         ",
-        kind: MigrationKind::Up,
-    }]
+            kind: MigrationKind::Up,
+        },
+        // Persist the synced reference data (previously kept only in the in-memory
+        // React Query cache) so records resolve project/tag names on a cold launch
+        // before any sync. Rows are display-only; a manual "Sync now" reconciles
+        // them with Jira / Everit. The last-sync timestamps live outside SQLite
+        // (in a tauri-plugin-store JSON file), so there is no timestamp column.
+        Migration {
+            version: 2,
+            description: "create_projects_and_tags",
+            sql: "
+                CREATE TABLE projects (
+                    id         TEXT PRIMARY KEY NOT NULL,
+                    key        TEXT NOT NULL,
+                    name       TEXT NOT NULL,
+                    avatar_url TEXT
+                );
+                CREATE TABLE tags (
+                    id   TEXT PRIMARY KEY NOT NULL,
+                    name TEXT NOT NULL
+                );
+            ",
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

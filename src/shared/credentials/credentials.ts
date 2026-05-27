@@ -3,6 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 /**
  * Connection credentials, mirrors the `Credentials` struct in src-tauri/src/lib.rs.
  * Stored as a single JSON blob in the OS keychain.
+ *
+ * Lives in `shared/` because both onboarding and the reference-data modules
+ * (projects, tags) read credentials to talk to Jira / Everit.
  */
 export interface Credentials {
     base_url: string;

@@ -2,7 +2,7 @@ import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
 
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { loadCredentials } from '@/features/onboarding/credentials';
+import { loadCredentials } from '@/shared/credentials/credentials';
 
 export const Route = createFileRoute('/_app')({
     beforeLoad: async () => {

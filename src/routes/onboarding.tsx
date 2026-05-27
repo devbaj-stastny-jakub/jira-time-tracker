@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Credentials } from '@/features/onboarding/credentials';
-import { loadCredentials } from '@/features/onboarding/credentials';
+import type { Credentials } from '@/shared/credentials/credentials';
+import { loadCredentials } from '@/shared/credentials/credentials';
 import {
     useCompleteOnboarding,
     useValidateTokens,

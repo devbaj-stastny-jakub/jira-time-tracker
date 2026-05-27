@@ -1,15 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
-import { type Credentials, loadCredentials, saveCredentials } from './credentials';
+import { type Credentials, saveCredentials } from '@/shared/credentials/credentials';
+import { credentialsKey, useCredentials } from '@/shared/credentials/useCredentials';
 import {
     type ValidationResult,
     getJiraCurrentUser,
     validateJira,
     validateTimetracker,
 } from './api';
-
-export const onboardingStatusKey = ['onboarding', 'credentials'] as const;
 
 interface TokenCheck {
     ok: boolean;
@@ -59,17 +58,9 @@ export function useCompleteOnboarding() {
     return useMutation<void, Error, Credentials>({
         mutationFn: saveCredentials,
         onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: onboardingStatusKey });
+            await queryClient.invalidateQueries({ queryKey: credentialsKey });
             navigate({ to: '/' });
         },
-    });
-}
-
-/** Reads stored credentials from the keychain (null when not onboarded). */
-export function useOnboardingStatus() {
-    return useQuery({
-        queryKey: onboardingStatusKey,
-        queryFn: loadCredentials,
     });
 }
 
@@ -80,8 +71,7 @@ export const currentUserKey = ['jira', 'current-user'] as const;
  * credentials exist so it never runs during onboarding.
  */
 export function useCurrentUser() {
-    const status = useOnboardingStatus();
-    const credentials = status.data;
+    const { data: credentials } = useCredentials();
     return useQuery({
         queryKey: currentUserKey,
         queryFn: () => getJiraCurrentUser(credentials!),

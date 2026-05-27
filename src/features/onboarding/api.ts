@@ -1,6 +1,6 @@
 import { fetch } from '@tauri-apps/plugin-http';
 
-import type { Credentials } from './credentials';
+import type { Credentials } from '@/shared/credentials/credentials';
 
 /**
  * Everit "Timetracker for Jira Cloud" REST API.

@@ -13,13 +13,14 @@ export interface RecordFormInitial {
     end: string;
 }
 
-/** Sensible defaults for a fresh manual entry: today, no times filled. */
+/** Sensible defaults for a fresh manual entry: today, "To" prefilled with now. */
 export function blankInitial(): RecordFormInitial {
+    const now = new Date();
     return {
         classification: { projectId: null, ticketNumber: '', tagIds: [] },
-        date: toDateValue(new Date()),
+        date: toDateValue(now),
         start: '',
-        end: '',
+        end: toTimeValue(now),
     };
 }
 

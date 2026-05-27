@@ -23,6 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { initialFromRecord } from './form-state';
 import { formatClock, formatDuration, ticketKey } from './format';
+import { projectColor } from './projectColor';
 import { RecordForm } from './RecordForm';
 import type { TimeRecord } from './records';
 import { useDeleteRecord, useTodayRecords, useUpdateRecord } from './useRecords';
@@ -76,6 +77,11 @@ function RecordRow({ record }: { record: TimeRecord }) {
 
     return (
         <li className="flex items-center gap-3 rounded-3xl bg-card px-4 py-3 ring-1 ring-border">
+            <span
+                className="w-1 self-stretch shrink-0 rounded-full"
+                style={{ backgroundColor: projectColor(record.projectId) }}
+                aria-hidden
+            />
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium">
@@ -89,7 +95,7 @@ function RecordRow({ record }: { record: TimeRecord }) {
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     <span>
-                        {formatClock(record.startAt)}–{formatClock(record.endAt)}
+                        {formatClock(record.startAt)} - {formatClock(record.endAt)}
                     </span>
                     <span>·</span>
                     <span>{formatDuration(record.startAt, record.endAt)}</span>

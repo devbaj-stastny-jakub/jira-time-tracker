@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ManualTab } from '@/features/timer/ManualTab';
 import { RecordList } from '@/features/timer/RecordList';
 import { TimerTab } from '@/features/timer/TimerTab';
+import { TodayTimeline } from '@/features/timer/TodayTimeline';
 import { TodayTotalBadge } from '@/features/timer/TodayTotalBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +39,7 @@ function TimerPage() {
                     <h2 className="text-sm font-medium text-muted-foreground">Today</h2>
                     <TodayTotalBadge />
                 </div>
+                <TodayTimeline />
                 <RecordList />
             </section>
         </div>

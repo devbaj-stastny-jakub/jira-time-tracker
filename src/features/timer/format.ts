@@ -19,13 +19,17 @@ export function formatElapsedMinutes(ms: number): string {
     return `${h}:${pad(m)}`;
 }
 
-/** A duration between two UTC ISO instants as `Xh Ym` (or `Ym`). */
-export function formatDuration(startIso: string, endIso: string): string {
-    const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+/** A duration in milliseconds as `Xh Ym` (or `Ym`). */
+export function formatDurationMs(ms: number): string {
     const minutes = Math.max(0, Math.round(ms / 60000));
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** A duration between two UTC ISO instants as `Xh Ym` (or `Ym`). */
+export function formatDuration(startIso: string, endIso: string): string {
+    return formatDurationMs(new Date(endIso).getTime() - new Date(startIso).getTime());
 }
 
 /** Local wall-clock `HH:mm` for a UTC ISO instant. */

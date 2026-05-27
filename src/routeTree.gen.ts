@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppUserRouteImport } from './routes/_app/user'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -42,11 +48,13 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/onboarding': typeof OnboardingRoute
   '/calendar': typeof AppCalendarRoute
   '/settings': typeof AppSettingsRoute
   '/user': typeof AppUserRoute
 }
 export interface FileRoutesByTo {
+  '/onboarding': typeof OnboardingRoute
   '/calendar': typeof AppCalendarRoute
   '/settings': typeof AppSettingsRoute
   '/user': typeof AppUserRoute
@@ -55,6 +63,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/user': typeof AppUserRoute
@@ -62,12 +71,13 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/settings' | '/user'
+  fullPaths: '/' | '/onboarding' | '/calendar' | '/settings' | '/user'
   fileRoutesByTo: FileRoutesByTo
-  to: '/calendar' | '/settings' | '/user' | '/'
+  to: '/onboarding' | '/calendar' | '/settings' | '/user' | '/'
   id:
     | '__root__'
     | '/_app'
+    | '/onboarding'
     | '/_app/calendar'
     | '/_app/settings'
     | '/_app/user'
@@ -76,10 +86,18 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -136,6 +154,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

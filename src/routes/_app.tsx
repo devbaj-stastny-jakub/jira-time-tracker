@@ -1,9 +1,16 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router';
+import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
 
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { loadCredentials } from '@/features/onboarding/credentials';
 
 export const Route = createFileRoute('/_app')({
+    beforeLoad: async () => {
+        const credentials = await loadCredentials();
+        if (!credentials) {
+            throw redirect({ to: '/onboarding' });
+        }
+    },
     component: AppLayout,
 });
 

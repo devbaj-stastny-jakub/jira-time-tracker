@@ -7,6 +7,13 @@
   ],
   "permissions": [
     "core:default",
+    "core:tray:default",
+    "core:menu:default",
+    "core:image:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
     {
       "identifier": "http:default",
       "allow": [

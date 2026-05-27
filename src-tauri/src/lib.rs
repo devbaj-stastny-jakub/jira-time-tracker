@@ -1,5 +1,6 @@
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 /// Keychain service + account under which the connection credentials are stored.
@@ -111,6 +112,19 @@ pub fn run() {
             load_credentials,
             clear_credentials
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        // The window hides to the menu bar on close (handled in the frontend), so
+        // clicking the Dock icon must bring it back. `Reopen` is macOS-only.
+        .run(|_app_handle, _event| {
+            #[cfg(target_os = "macos")]
+            {
+                if let tauri::RunEvent::Reopen { .. } = _event {
+                    if let Some(window) = _app_handle.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        });
 }

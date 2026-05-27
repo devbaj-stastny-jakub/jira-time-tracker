@@ -3,11 +3,14 @@ import { Outlet, createRootRoute } from '@tanstack/react-router';
 //import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
+import { useMenuBarTimer } from '@/features/timer/useMenuBarTimer';
+
 export const Route = createRootRoute({
     component: RootComponent,
 });
 
 function RootComponent() {
+    useMenuBarTimer();
     return (
         <React.Fragment>
             <Outlet />

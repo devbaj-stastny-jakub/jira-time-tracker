@@ -11,6 +11,14 @@ export function formatElapsed(ms: number): string {
     return `${h}:${pad(m)}:${pad(s)}`;
 }
 
+/** Elapsed milliseconds as `H:MM` (minute granularity, hours uncapped). */
+export function formatElapsedMinutes(ms: number): string {
+    const totalMin = Math.max(0, Math.floor(ms / 60000));
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${h}:${pad(m)}`;
+}
+
 /** A duration between two UTC ISO instants as `Xh Ym` (or `Ym`). */
 export function formatDuration(startIso: string, endIso: string): string {
     const ms = new Date(endIso).getTime() - new Date(startIso).getTime();

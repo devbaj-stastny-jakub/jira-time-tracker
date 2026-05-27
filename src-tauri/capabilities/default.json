@@ -17,6 +17,19 @@
           "url": "https://*/*"
         }
       ]
+    },
+    "store:default",
+    {
+      "identifier": "sql:allow-load",
+      "allow": [{ "url": "sqlite:timetracker.db" }]
+    },
+    {
+      "identifier": "sql:allow-execute",
+      "allow": [{ "url": "sqlite:timetracker.db" }]
+    },
+    {
+      "identifier": "sql:allow-select",
+      "allow": [{ "url": "sqlite:timetracker.db" }]
     }
   ]
 }

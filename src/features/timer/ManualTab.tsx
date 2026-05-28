@@ -5,7 +5,10 @@ import { RecordForm } from './RecordForm';
 import { useCreateRecord, useTodayRecords } from './useRecords';
 
 /** Manual entry mode: enter a date and from/to times by hand. */
-export function ManualTab() {
+export function ManualTab({
+    onAdded,
+    compact = false,
+}: { onAdded?: () => void; compact?: boolean } = {}) {
     const create = useCreateRecord();
     const { data: records = [] } = useTodayRecords();
     // Remount the form after a successful save to reset it to fresh defaults.
@@ -20,10 +23,17 @@ export function ManualTab() {
             key={`${formKey}-${initial.start}`}
             idPrefix="manual"
             initial={initial}
+            heroReadout
+            compact={compact}
             submitLabel="Add entry"
             isPending={create.isPending}
             onSubmit={(input) =>
-                create.mutate(input, { onSuccess: () => setFormKey((k) => k + 1) })
+                create.mutate(input, {
+                    onSuccess: () => {
+                        setFormKey((k) => k + 1);
+                        onAdded?.();
+                    },
+                })
             }
         />
     );

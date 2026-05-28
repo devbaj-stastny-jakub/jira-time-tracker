@@ -6,6 +6,8 @@ import {
     loadActiveTimer,
     saveActiveTimer,
 } from './active-timer';
+import { notifyRecordsChanged, notifyTimerChanged } from './cross-window';
+import { roundDurationUp15Ms } from './format';
 import { type TimeRecord, createRecord, latestRecord } from './records';
 import { todayRecordsKey } from './useRecords';
 
@@ -38,7 +40,10 @@ export function useStartTimer() {
             await saveActiveTimer(timer);
             return timer;
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: activeTimerKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: activeTimerKey });
+            notifyTimerChanged();
+        },
     });
 }
 
@@ -67,11 +72,13 @@ export function useStopTimer() {
             if (!current.projectId || !current.ticketNumber.trim()) {
                 throw new Error('Project and ticket are required to stop the timer');
             }
+            const startMs = new Date(current.startAt).getTime();
+            const endMs = startMs + roundDurationUp15Ms(Date.now() - startMs);
             await createRecord({
                 projectId: current.projectId,
                 ticketNumber: current.ticketNumber.trim(),
                 startAt: current.startAt,
-                endAt: new Date().toISOString(),
+                endAt: new Date(endMs).toISOString(),
                 tagIds: current.tagIds,
             });
             await clearActiveTimer();
@@ -79,6 +86,8 @@ export function useStopTimer() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: activeTimerKey });
             queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            notifyTimerChanged();
+            notifyRecordsChanged();
         },
     });
 }
@@ -88,6 +97,9 @@ export function useDiscardTimer() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: clearActiveTimer,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: activeTimerKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: activeTimerKey });
+            notifyTimerChanged();
+        },
     });
 }

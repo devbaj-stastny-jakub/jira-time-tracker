@@ -1,7 +1,6 @@
 import { ChevronsUp } from 'lucide-react';
 import { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,6 +10,7 @@ import {
     InputGroupInput,
 } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { ClassificationFields } from './ClassificationFields';
 import { DatePicker } from './DatePicker';
 import { type RecordFormInitial, blankInitial } from './form-state';
@@ -33,6 +33,13 @@ interface Props {
     isPending: boolean;
     onSubmit: (input: RecordInput) => void;
     onCancel?: () => void;
+    /**
+     * Show a large mono duration readout above the fields, mirroring the live
+     * timer's clock. Used inline (Manual tab) but not in the compact edit dialog.
+     */
+    heroReadout?: boolean;
+    /** Tight layout for the quick-entry overlay panel. */
+    compact?: boolean;
 }
 
 /**
@@ -47,6 +54,8 @@ export function RecordForm({
     isPending,
     onSubmit,
     onCancel,
+    heroReadout = false,
+    compact = false,
 }: Props) {
     const [state, setState] = useState<RecordFormInitial>(() => initial ?? blankInitial());
 
@@ -80,7 +89,29 @@ export function RecordForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="@container space-y-4">
+        <form onSubmit={handleSubmit} className={cn('@container', compact ? 'space-y-3' : 'space-y-6')}>
+            {heroReadout ? (
+                <div
+                    className={cn(
+                        'flex flex-col items-center',
+                        compact ? 'gap-1' : 'gap-2 py-1',
+                    )}
+                >
+                    <p className="text-[0.625rem] font-semibold tracking-[0.18em] text-muted-foreground/60 uppercase">
+                        Duration
+                    </p>
+                    <span
+                        className={cn(
+                            'font-mono leading-none font-semibold tracking-tight tabular-nums',
+                            compact ? 'text-3xl' : 'text-5xl sm:text-6xl',
+                            duration ? undefined : 'text-muted-foreground/20 select-none',
+                        )}
+                    >
+                        {duration ?? '0h 0m'}
+                    </span>
+                </div>
+            ) : null}
+
             <ClassificationFields
                 idPrefix={idPrefix}
                 value={state.classification}
@@ -92,8 +123,13 @@ export function RecordForm({
                 }
             />
 
-            <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-3">
-                <div className="space-y-1.5">
+            <div
+                className={cn(
+                    'grid',
+                    compact ? 'grid-cols-2 gap-2' : 'grid-cols-1 gap-4 @2xl:grid-cols-3',
+                )}
+            >
+                <div className={cn('space-y-1.5', compact && 'col-span-2')}>
                     <Label htmlFor={`${idPrefix}-date`}>Date</Label>
                     <DatePicker
                         id={`${idPrefix}-date`}
@@ -102,7 +138,7 @@ export function RecordForm({
                     />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`${idPrefix}-start`}>From</Label>
                     <Input
                         id={`${idPrefix}-start`}
@@ -112,35 +148,41 @@ export function RecordForm({
                         onChange={(e) => setState((s) => ({ ...s, start: e.target.value }))}
                     />
                 </div>
-                <div className="space-y-1.5">
+                <div className="flex flex-col gap-1.5">
                     <Label htmlFor={`${idPrefix}-end`}>To</Label>
-                    <InputGroup>
-                        <InputGroupInput
-                            id={`${idPrefix}-end`}
-                            type="time"
-                            value={state.end}
-                            aria-invalid={rangeInvalid}
-                            className={emptyTimeClass(state.end)}
-                            onChange={(e) => setState((s) => ({ ...s, end: e.target.value }))}
-                        />
-                        <InputGroupAddon align="inline-end">
-                            {duration ? <Badge variant="secondary">{duration}</Badge> : null}
-                            <InputGroupButton
-                                size="icon-xs"
-                                aria-label="Round duration up to nearest 15 minutes"
-                                title="Round duration up to nearest 15 minutes"
-                                disabled={duration === null}
-                                onClick={() =>
-                                    setState((s) => ({
-                                        ...s,
-                                        end: roundDurationUp15(s.start, s.end),
-                                    }))
-                                }
-                            >
-                                <ChevronsUp />
-                            </InputGroupButton>
-                        </InputGroupAddon>
-                    </InputGroup>
+                    <div className="flex items-center gap-2">
+                        <InputGroup className="flex-1">
+                            <InputGroupInput
+                                id={`${idPrefix}-end`}
+                                type="time"
+                                value={state.end}
+                                aria-invalid={rangeInvalid}
+                                className={emptyTimeClass(state.end)}
+                                onChange={(e) => setState((s) => ({ ...s, end: e.target.value }))}
+                            />
+                            <InputGroupAddon align="inline-end">
+                                <InputGroupButton
+                                    size="icon-xs"
+                                    aria-label="Round duration up to nearest 15 minutes"
+                                    title="Round duration up to nearest 15 minutes"
+                                    disabled={duration === null}
+                                    onClick={() =>
+                                        setState((s) => ({
+                                            ...s,
+                                            end: roundDurationUp15(s.start, s.end),
+                                        }))
+                                    }
+                                >
+                                    <ChevronsUp />
+                                </InputGroupButton>
+                            </InputGroupAddon>
+                        </InputGroup>
+                        {!heroReadout && duration ? (
+                            <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                                {duration}
+                            </span>
+                        ) : null}
+                    </div>
                 </div>
             </div>
 

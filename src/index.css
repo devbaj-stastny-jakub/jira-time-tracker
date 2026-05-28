@@ -124,6 +124,14 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* The overlay panel's webview: keep the body transparent so only the floating
+     card paints inside the transparent NSPanel window. Clip overflow so the
+     brief moment between a tab switch and the NSPanel resize doesn't flash a
+     vertical scrollbar. */
+  body.overlay-window {
+    background: transparent;
+    overflow: hidden;
+    }
   html {
     @apply font-sans;
     }

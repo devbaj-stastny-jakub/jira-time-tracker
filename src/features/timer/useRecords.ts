@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { notifyRecordsChanged } from './cross-window';
 import {
     type RecordInput,
     createRecord,
@@ -49,7 +50,10 @@ export function useCreateRecord() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (input: RecordInput) => createRecord(input),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: todayRecordsKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            notifyRecordsChanged();
+        },
     });
 }
 
@@ -58,7 +62,10 @@ export function useUpdateRecord() {
     return useMutation({
         mutationFn: ({ id, input }: { id: string; input: RecordInput }) =>
             updateRecord(id, input),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: todayRecordsKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            notifyRecordsChanged();
+        },
     });
 }
 
@@ -66,6 +73,9 @@ export function useDeleteRecord() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => deleteRecord(id),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: todayRecordsKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            notifyRecordsChanged();
+        },
     });
 }

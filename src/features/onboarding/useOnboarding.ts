@@ -86,6 +86,27 @@ export function useCompleteOnboarding() {
 export const currentUserKey = ['jira', 'current-user'] as const;
 
 /**
+ * Persists edited credentials from the user page. Validation has already passed
+ * (the form gates Save on it), so this only writes the keychain and refreshes
+ * the queries whose results depend on the credentials — the connected Jira user
+ * shown in the sidebar. Synced projects/tags in SQLite are intentionally left
+ * untouched: a token/URL fix on the same instance doesn't invalidate them, and
+ * a true instance switch is handled by Settings → "Sync now".
+ */
+export function useUpdateCredentials() {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, Credentials>({
+        mutationFn: (credentials) => saveCredentials(credentials),
+        onSuccess: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: credentialsKey }),
+                queryClient.invalidateQueries({ queryKey: currentUserKey }),
+            ]);
+        },
+    });
+}
+
+/**
  * The connected Jira user, derived from the stored credentials. Disabled until
  * credentials exist so it never runs during onboarding.
  */

@@ -73,6 +73,18 @@ export function roundDurationUp15(startStr: string, endStr: string): string {
 }
 
 /**
+ * Round a duration in milliseconds up to the next 15-minute increment. Durations
+ * already on a 15-minute boundary are unchanged; non-positive inputs pass through.
+ * Mirrors the manual form's rounding button so a stopped timer saves the same
+ * 15-minute granularity Jira worklogs expect.
+ */
+export function roundDurationUp15Ms(ms: number): number {
+    if (ms <= 0) return ms;
+    const block = 15 * 60_000;
+    return Math.ceil(ms / block) * block;
+}
+
+/**
  * Combine a local `yyyy-MM-dd` date and `HH:mm` time into a UTC ISO instant.
  * Returns null if either part is missing/malformed.
  */

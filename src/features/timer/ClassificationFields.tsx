@@ -45,54 +45,56 @@ export function ClassificationFields({ value, onChange, idPrefix }: Props) {
     const project = projects?.find((p) => p.id === value.projectId);
 
     return (
-        <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-3">
-            <div className="space-y-1.5">
-                <Label htmlFor={`${idPrefix}-project`}>Project</Label>
-                {projects && projects.length > 0 ? (
-                    <ProjectCombobox
-                        id={`${idPrefix}-project`}
-                        projects={projects}
-                        value={value.projectId}
-                        onChange={(id) =>
-                            // Changing project changes the ticket key prefix, so the
-                            // number no longer belongs to the old project — clear it.
-                            onChange({ projectId: id, ticketNumber: '' })
-                        }
-                    />
-                ) : (
-                    <p className="text-sm text-muted-foreground">
-                        No projects — sync them in Settings.
-                    </p>
-                )}
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 @md:grid-cols-[2fr_1fr]">
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${idPrefix}-project`}>Project</Label>
+                    {projects && projects.length > 0 ? (
+                        <ProjectCombobox
+                            id={`${idPrefix}-project`}
+                            projects={projects}
+                            value={value.projectId}
+                            onChange={(id) =>
+                                // Changing project changes the ticket key prefix, so the
+                                // number no longer belongs to the old project — clear it.
+                                onChange({ projectId: id, ticketNumber: '' })
+                            }
+                        />
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            No projects — sync them in Settings.
+                        </p>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${idPrefix}-ticket`}>Ticket</Label>
+                    <InputGroup data-disabled={!project}>
+                        <InputGroupAddon>
+                            <InputGroupText
+                                className={cn(
+                                    'font-mono',
+                                    project ? 'text-foreground' : 'text-muted-foreground',
+                                )}
+                            >
+                                {project ? `${project.key}-` : 'PROJ-'}
+                            </InputGroupText>
+                        </InputGroupAddon>
+                        <InputGroupInput
+                            id={`${idPrefix}-ticket`}
+                            inputMode="numeric"
+                            placeholder="123"
+                            disabled={!project}
+                            value={value.ticketNumber}
+                            onChange={(e) =>
+                                onChange({ ticketNumber: e.target.value.replace(/\D/g, '') })
+                            }
+                        />
+                    </InputGroup>
+                </div>
             </div>
 
-            <div className="space-y-1.5">
-                <Label htmlFor={`${idPrefix}-ticket`}>Ticket</Label>
-                <InputGroup data-disabled={!project}>
-                    <InputGroupAddon>
-                        <InputGroupText
-                            className={cn(
-                                'font-mono',
-                                project ? 'text-foreground' : 'text-muted-foreground',
-                            )}
-                        >
-                            {project ? `${project.key}-` : 'PROJ-'}
-                        </InputGroupText>
-                    </InputGroupAddon>
-                    <InputGroupInput
-                        id={`${idPrefix}-ticket`}
-                        inputMode="numeric"
-                        placeholder="123"
-                        disabled={!project}
-                        value={value.ticketNumber}
-                        onChange={(e) =>
-                            onChange({ ticketNumber: e.target.value.replace(/\D/g, '') })
-                        }
-                    />
-                </InputGroup>
-            </div>
-
-            <div className="space-y-1.5">
+            <div className="flex flex-col gap-1.5">
                 <Label>Tags</Label>
                 <TagPicker
                     tags={tags ?? []}

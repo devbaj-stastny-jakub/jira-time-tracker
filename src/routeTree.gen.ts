@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OverlayRouteImport } from './routes/overlay'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
@@ -16,6 +17,11 @@ import { Route as AppUserRouteImport } from './routes/_app/user'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 
+const OverlayRoute = OverlayRouteImport.update({
+  id: '/overlay',
+  path: '/overlay',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -49,12 +55,14 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/onboarding': typeof OnboardingRoute
+  '/overlay': typeof OverlayRoute
   '/calendar': typeof AppCalendarRoute
   '/settings': typeof AppSettingsRoute
   '/user': typeof AppUserRoute
 }
 export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
+  '/overlay': typeof OverlayRoute
   '/calendar': typeof AppCalendarRoute
   '/settings': typeof AppSettingsRoute
   '/user': typeof AppUserRoute
@@ -64,6 +72,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/overlay': typeof OverlayRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/user': typeof AppUserRoute
@@ -71,13 +80,20 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/onboarding' | '/calendar' | '/settings' | '/user'
+  fullPaths:
+    | '/'
+    | '/onboarding'
+    | '/overlay'
+    | '/calendar'
+    | '/settings'
+    | '/user'
   fileRoutesByTo: FileRoutesByTo
-  to: '/onboarding' | '/calendar' | '/settings' | '/user' | '/'
+  to: '/onboarding' | '/overlay' | '/calendar' | '/settings' | '/user' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/onboarding'
+    | '/overlay'
     | '/_app/calendar'
     | '/_app/settings'
     | '/_app/user'
@@ -87,10 +103,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  OverlayRoute: typeof OverlayRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/overlay': {
+      id: '/overlay'
+      path: '/overlay'
+      fullPath: '/overlay'
+      preLoaderRoute: typeof OverlayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -155,6 +179,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  OverlayRoute: OverlayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

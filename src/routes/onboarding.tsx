@@ -1,24 +1,16 @@
-import { useState } from 'react';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { Timer } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { Credentials } from '@/shared/credentials/credentials';
 import { loadCredentials } from '@/shared/credentials/credentials';
-import {
-    useCompleteOnboarding,
-    useValidateTokens,
-} from '@/features/onboarding/useOnboarding';
+import { CredentialsForm } from '@/features/onboarding/CredentialsForm';
+import { useCompleteOnboarding } from '@/features/onboarding/useOnboarding';
 
 export const Route = createFileRoute('/onboarding')({
     beforeLoad: async () => {
@@ -30,141 +22,70 @@ export const Route = createFileRoute('/onboarding')({
     component: OnboardingPage,
 });
 
-const emptyForm: Credentials = {
-    base_url: '',
-    email: '',
-    jira_token: '',
-    timetracker_token: '',
-};
-
 function OnboardingPage() {
-    const [form, setForm] = useState<Credentials>(emptyForm);
-    const validate = useValidateTokens();
     const complete = useCompleteOnboarding();
 
-    const report = validate.data;
-    const validated = report?.allValid ?? false;
-
-    // Any edit invalidates a previous validation result.
-    function update(field: keyof Credentials, value: string) {
-        setForm((prev) => ({ ...prev, [field]: value }));
-        validate.reset();
-    }
-
-    const filled =
-        form.base_url.trim() !== '' &&
-        form.email.trim() !== '' &&
-        form.jira_token.trim() !== '' &&
-        form.timetracker_token.trim() !== '';
-
     return (
-        <div className="flex min-h-screen items-center justify-center p-6">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Connect to Jira</CardTitle>
-                    <CardDescription>
-                        Enter your Jira connection details. Both tokens are validated
-                        before the app is unlocked.
-                    </CardDescription>
-                </CardHeader>
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">
+            {/* Cobalt glow pooling from the top, echoing the sidebar's wash. */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-primary/10 mask-[radial-gradient(110%_70%_at_50%_-10%,black,transparent_60%)]"
+            />
+            {/* Faint engineering grid, faded out with a radial mask for depth. */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 opacity-60 bg-[linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] bg-size-[26px_26px] mask-[radial-gradient(100%_80%_at_50%_0%,black,transparent_75%)]"
+            />
 
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="base_url">Jira base URL</Label>
-                        <Input
-                            id="base_url"
-                            placeholder="https://your-domain.atlassian.net"
-                            value={form.base_url}
-                            onChange={(e) => update('base_url', e.target.value)}
-                        />
+            <div className="relative w-full max-w-md">
+                {/* Brand lockup — the same gradient mark the sidebar carries. */}
+                <div className="animate-in fade-in slide-in-from-bottom-2 mb-7 flex flex-col items-center gap-3 text-center duration-500">
+                    <div className="bg-linear-to-br from-primary to-primary/70 text-primary-foreground shadow-primary/30 ring-primary/20 flex size-12 items-center justify-center rounded-2xl shadow-lg ring-1">
+                        <Timer className="size-6" />
                     </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Account email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={form.email}
-                            onChange={(e) => update('email', e.target.value)}
-                        />
+                    <div className="flex flex-col gap-1">
+                        <span className="font-heading text-xl font-semibold tracking-tight">
+                            Welcome to Timely
+                        </span>
+                        <span className="text-muted-foreground text-[0.625rem] font-medium tracking-[0.18em] uppercase">
+                            Jira time tracker
+                        </span>
                     </div>
+                </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="jira_token">Jira API token</Label>
-                        <Input
-                            id="jira_token"
-                            type="password"
-                            value={form.jira_token}
-                            onChange={(e) => update('jira_token', e.target.value)}
+                <Card className="animate-in fade-in slide-in-from-bottom-3 shadow-primary/5 w-full shadow-xl ring-1 ring-border duration-700">
+                    <CardHeader>
+                        <span className="text-primary text-[0.7rem] font-semibold tracking-[0.14em] uppercase">
+                            Setup
+                        </span>
+                        <CardTitle className="font-heading text-lg tracking-tight">
+                            Connect to Jira
+                        </CardTitle>
+                        <CardDescription>
+                            Enter your Jira connection details. Both tokens are validated
+                            before the app is unlocked.
+                        </CardDescription>
+                    </CardHeader>
+
+                    <CardContent>
+                        <CredentialsForm
+                            stored={null}
+                            submitLabel="Complete setup"
+                            submittingLabel="Saving…"
+                            isSubmitting={complete.isPending}
+                            submitError={
+                                complete.isError
+                                    ? new Error(
+                                          `Could not save credentials: ${complete.error.message}`,
+                                      )
+                                    : null
+                            }
+                            onSubmit={(credentials) => complete.mutate(credentials)}
                         />
-                        {report ? <TokenStatus label="Jira token" ok={report.jira.ok} detail={report.jira.error ?? `HTTP ${report.jira.status}`} /> : null}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="timetracker_token">Timetracker token</Label>
-                        <Input
-                            id="timetracker_token"
-                            type="password"
-                            value={form.timetracker_token}
-                            onChange={(e) => update('timetracker_token', e.target.value)}
-                        />
-                        {report ? <TokenStatus label="Timetracker token" ok={report.timetracker.ok} detail={report.timetracker.error ?? `HTTP ${report.timetracker.status}`} /> : null}
-                    </div>
-                </CardContent>
-
-                <CardFooter className="flex-col gap-2">
-                    <Button
-                        className="w-full"
-                        variant="outline"
-                        disabled={!filled || validate.isPending}
-                        onClick={() => validate.mutate(form)}
-                    >
-                        {validate.isPending ? (
-                            <>
-                                <Loader2 className="size-4 animate-spin" />
-                                Validating…
-                            </>
-                        ) : (
-                            'Validate tokens'
-                        )}
-                    </Button>
-
-                    <Button
-                        className="w-full"
-                        disabled={!validated || complete.isPending}
-                        onClick={() => complete.mutate(form)}
-                    >
-                        {complete.isPending ? (
-                            <>
-                                <Loader2 className="size-4 animate-spin" />
-                                Saving…
-                            </>
-                        ) : (
-                            'Complete setup'
-                        )}
-                    </Button>
-
-                    {complete.isError ? (
-                        <p className="text-destructive text-sm">
-                            Could not save credentials: {complete.error.message}
-                        </p>
-                    ) : null}
-                </CardFooter>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
-    );
-}
-
-function TokenStatus({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
-    return (
-        <p
-            className={`flex items-center gap-1.5 text-sm ${
-                ok ? 'text-green-600' : 'text-destructive'
-            }`}
-        >
-            {ok ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
-            {ok ? `${label} valid` : `${label} invalid (${detail})`}
-        </p>
     );
 }

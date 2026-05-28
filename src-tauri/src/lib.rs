@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod overlay;
+
 /// Keychain service + account under which the connection credentials are stored.
 /// A single entry holds the whole credential blob as JSON.
 const KEYRING_SERVICE: &str = "com.timely.app";
@@ -10,6 +12,15 @@ const KEYRING_ACCOUNT: &str = "credentials";
 
 /// SQLite database (relative to the app's data dir) holding local time records.
 const DB_URL: &str = "sqlite:timetracker.db";
+
+/// Global shortcut that toggles the quick-entry overlay: ⌃⌥T (Ctrl+Opt+T).
+#[cfg(desktop)]
+const OVERLAY_SHORTCUT_MODS: tauri_plugin_global_shortcut::Modifiers =
+    tauri_plugin_global_shortcut::Modifiers::CONTROL
+        .union(tauri_plugin_global_shortcut::Modifiers::ALT);
+#[cfg(desktop)]
+const OVERLAY_SHORTCUT_KEY: tauri_plugin_global_shortcut::Code =
+    tauri_plugin_global_shortcut::Code::KeyT;
 
 /// Schema migrations applied on startup by `tauri-plugin-sql`.
 ///
@@ -116,16 +127,58 @@ fn clear_credentials() -> Result<(), String> {
     }
 }
 
+/// Hide the quick-entry overlay. Called from its webview on Escape, blur, or
+/// after a successful save. A no-op off macOS, where the overlay doesn't exist.
+#[tauri::command]
+fn hide_overlay(app: tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    overlay::hide(&app);
+    #[cfg(not(target_os = "macos"))]
+    let _ = app;
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[cfg(desktop)]
+    use tauri_plugin_global_shortcut::ShortcutState;
+
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations(DB_URL, migrations())
                 .build(),
-        )
+        );
+
+    // ⌃⌥T toggles the quick-entry overlay. The shortcut is registered in
+    // `setup`; the handler here only reacts to it (on key-down, not key-up).
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state() == ShortcutState::Pressed
+                        && shortcut.matches(OVERLAY_SHORTCUT_MODS, OVERLAY_SHORTCUT_KEY)
+                    {
+                        #[cfg(target_os = "macos")]
+                        overlay::toggle(app);
+                        #[cfg(not(target_os = "macos"))]
+                        let _ = app;
+                    }
+                })
+                .build(),
+        );
+    }
+
+    // The non-activating overlay panel is macOS-only (NSPanel).
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_nspanel::init());
+    }
+
+    builder
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -134,12 +187,24 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            #[cfg(target_os = "macos")]
+            overlay::setup(app)?;
+
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+                let shortcut = Shortcut::new(Some(OVERLAY_SHORTCUT_MODS), OVERLAY_SHORTCUT_KEY);
+                app.global_shortcut().register(shortcut)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             save_credentials,
             load_credentials,
-            clear_credentials
+            clear_credentials,
+            hide_overlay
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

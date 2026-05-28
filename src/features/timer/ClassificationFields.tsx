@@ -77,7 +77,7 @@ export function ClassificationFields({ value, onChange, idPrefix }: Props) {
                                     project ? 'text-foreground' : 'text-muted-foreground',
                                 )}
                             >
-                                {project ? `${project.key}-` : 'PROJ-'}
+                                {project ? `${project.key} -` : 'PROJ -'}
                             </InputGroupText>
                         </InputGroupAddon>
                         <InputGroupInput

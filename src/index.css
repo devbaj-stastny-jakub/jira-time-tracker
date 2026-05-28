@@ -25,6 +25,25 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-running: var(--running);
+    --color-running-foreground: var(--running-foreground);
+    --color-now: var(--now);
+    --color-now-foreground: var(--now-foreground);
+    --color-project-1: var(--project-1);
+    --color-project-2: var(--project-2);
+    --color-project-3: var(--project-3);
+    --color-project-4: var(--project-4);
+    --color-project-5: var(--project-5);
+    --color-project-6: var(--project-6);
+    --color-project-7: var(--project-7);
+    --color-project-8: var(--project-8);
+    --color-project-9: var(--project-9);
+    --color-project-10: var(--project-10);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -64,6 +83,25 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.58 0.16 152);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.62 0.16 75);
+    --warning-foreground: oklch(0.985 0 0);
+    --running: oklch(0.6 0.2 145);
+    --running-foreground: oklch(0.985 0 0);
+    --now: oklch(0.62 0.22 25);
+    --now-foreground: oklch(0.985 0 0);
+    --project-1: oklch(0.65 0.16 250);
+    --project-2: oklch(0.7 0.17 152);
+    --project-3: oklch(0.75 0.16 75);
+    --project-4: oklch(0.62 0.21 25);
+    --project-5: oklch(0.65 0.21 295);
+    --project-6: oklch(0.7 0.21 350);
+    --project-7: oklch(0.72 0.13 195);
+    --project-8: oklch(0.7 0.18 50);
+    --project-9: oklch(0.6 0.21 280);
+    --project-10: oklch(0.78 0.18 130);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.55 0.2 257);
@@ -99,6 +137,25 @@
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.74 0.16 152);
+    --success-foreground: oklch(0.145 0 0);
+    --warning: oklch(0.82 0.17 75);
+    --warning-foreground: oklch(0.145 0 0);
+    --running: oklch(0.78 0.2 148);
+    --running-foreground: oklch(0.145 0 0);
+    --now: oklch(0.72 0.22 25);
+    --now-foreground: oklch(0.145 0 0);
+    --project-1: oklch(0.72 0.16 250);
+    --project-2: oklch(0.78 0.17 152);
+    --project-3: oklch(0.82 0.16 75);
+    --project-4: oklch(0.72 0.21 25);
+    --project-5: oklch(0.72 0.2 295);
+    --project-6: oklch(0.76 0.2 350);
+    --project-7: oklch(0.78 0.13 195);
+    --project-8: oklch(0.76 0.17 50);
+    --project-9: oklch(0.68 0.2 280);
+    --project-10: oklch(0.82 0.17 130);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.62 0.19 257);
@@ -115,6 +172,21 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.62 0.19 257);
+}
+
+@keyframes timer-tick-out {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-100%); opacity: 0; }
+}
+@keyframes timer-tick-in {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.timer-tick-out { animation: timer-tick-out 250ms ease forwards; }
+.timer-tick-in { animation: timer-tick-in 250ms ease forwards; }
+@media (prefers-reduced-motion: reduce) {
+    .timer-tick-out { display: none; }
+    .timer-tick-in { animation: none; }
 }
 
 @layer base {
@@ -135,4 +207,26 @@
   html {
     @apply font-sans;
     }
+}
+
+@layer components {
+  /* Single source of truth for the small uppercase eyebrow used across screen
+     headers, card titles, and status pills. */
+  .eyebrow {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted-foreground);
+  }
+
+  /* tw-animate-css defaults animation-fill-mode to `none`, which leaves any
+     element with `animate-in delay-*` visible in its final state during the
+     delay window before the keyframes start — so the card flashes before it
+     animates in. Holding the `from` state through the delay (fill-mode: both)
+     fixes the flash for every entry animation we use. */
+  .animate-in,
+  .animate-out {
+    --tw-animation-fill-mode: both;
+  }
 }

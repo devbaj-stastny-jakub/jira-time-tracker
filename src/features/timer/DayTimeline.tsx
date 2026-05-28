@@ -9,7 +9,7 @@ import {
     HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { formatClock, formatDuration, ticketKey } from './format';
-import { projectColor } from './projectColor';
+import { projectColor, projectColorAlpha } from './projectColor';
 import type { TimeRecord } from './records';
 import { useActiveTimer } from './useActiveTimer';
 
@@ -88,7 +88,7 @@ export function DayTimeline({ date, records }: { date: Date; records: TimeRecord
                         style={{
                             left: `${runSpan.left}%`,
                             width: `${runSpan.width}%`,
-                            backgroundColor: `${projectColor(active?.projectId)}80`,
+                            backgroundColor: projectColorAlpha(active?.projectId, 0.5),
                             borderColor: projectColor(active?.projectId),
                         }}
                         aria-label="Running timer"
@@ -97,16 +97,16 @@ export function DayTimeline({ date, records }: { date: Date; records: TimeRecord
 
                 {nowLeft !== null ? (
                     <div
-                        className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-rose-500"
+                        className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-now"
                         style={{ left: `${nowLeft}%` }}
                         aria-label="Now"
                     >
-                        <span className="absolute -top-px left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-rose-500" />
+                        <span className="absolute -top-px left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-now" />
                     </div>
                 ) : null}
             </div>
 
-            <div className="flex justify-between px-0.5 font-mono text-[0.625rem] font-medium tabular-nums text-muted-foreground/50">
+            <div className="flex justify-between px-0.5 font-mono text-[0.6875rem] font-medium tabular-nums text-muted-foreground/80">
                 {AXIS_LABELS.map((label) => (
                     <span key={label}>{label}</span>
                 ))}
@@ -134,7 +134,7 @@ function RecordBlock({ record, base }: { record: TimeRecord; base: number }) {
                 style={{
                     left: `${left}%`,
                     width: `${width}%`,
-                    backgroundColor: `${projectColor(record.projectId)}B3`,
+                    backgroundColor: projectColorAlpha(record.projectId, 0.7),
                     borderColor: projectColor(record.projectId),
                 }}
             />

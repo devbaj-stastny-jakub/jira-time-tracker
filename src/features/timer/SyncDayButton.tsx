@@ -1,4 +1,4 @@
-import { Loader2, Upload } from 'lucide-react';
+import { Check, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,20 @@ export function SyncDayButton({ date }: { date: Date }) {
     const push = usePushDay();
 
     const count = pending ?? 0;
-    if (!isSyncing && count === 0) return null;
+    // Positive affirmation when there's nothing to push — keeps the slot
+    // occupied instead of leaving a hole where the action used to be.
+    if (!isSyncing && count === 0) {
+        return (
+            <span
+                role="status"
+                aria-label="All entries synced to Jira"
+                className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-medium text-success"
+            >
+                <Check className="size-3" />
+                All synced
+            </span>
+        );
+    }
 
     return (
         <Button

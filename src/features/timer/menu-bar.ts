@@ -5,7 +5,7 @@
  * resident in the menu bar).
  *
  * - Idle: a hollow dot, title `idle`.
- * - Running: a filled dot + elapsed minutes (e.g. `1:23`).
+ * - Running: a filled dot + elapsed time (e.g. `1:23:45`).
  * - Left-click: opens a menu with Start / Discard / Show Window / Quit.
  * - Right-click: does nothing.
  */

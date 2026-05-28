@@ -36,9 +36,7 @@ export function ProjectCombobox({ id, projects, value, onChange }: Props) {
                         className="w-full justify-between px-3 font-normal"
                     >
                         <span className={selected ? '' : 'text-muted-foreground'}>
-                            {selected
-                                ? `${selected.key} — ${selected.name}`
-                                : 'Select a project'}
+                            {selected ? selected.name : 'Select a project'}
                         </span>
                         <ChevronsUpDown className="opacity-50" />
                     </Button>
@@ -62,7 +60,7 @@ export function ProjectCombobox({ id, projects, value, onChange }: Props) {
                                         setOpen(false);
                                     }}
                                 >
-                                    {p.key} — {p.name}
+                                    {p.name}
                                 </CommandItem>
                             ))}
                         </CommandGroup>

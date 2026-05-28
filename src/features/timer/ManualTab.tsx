@@ -23,7 +23,7 @@ export function ManualTab({
             key={`${formKey}-${initial.start}`}
             idPrefix="manual"
             initial={initial}
-            heroReadout
+            heroReadout={!compact}
             compact={compact}
             submitLabel="Add entry"
             isPending={create.isPending}

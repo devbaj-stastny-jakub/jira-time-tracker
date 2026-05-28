@@ -100,9 +100,7 @@ export function RecordList({
     return (
         <div className="space-y-2.5">
             <div className="flex items-center gap-2">
-                <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
-                    Entries
-                </p>
+                <p className="eyebrow">Entries</p>
                 <span className="font-mono text-[0.625rem] font-medium tabular-nums text-muted-foreground/50">
                     {records.length}
                 </span>
@@ -128,83 +126,110 @@ function RecordRow({ record }: { record: TimeRecord }) {
     const isSyncing = useIsSyncing();
     const push = usePushRecord();
 
+    const runSync = () => {
+        push.mutate(record, {
+            onSuccess: () => toast.success('Synced to Jira'),
+            onError: (cause) => {
+                const message = cause instanceof Error ? cause.message : String(cause);
+                toast.error(`Sync failed: ${message}`);
+            },
+        });
+    };
+
+    // Row click opens edit unless the click originated from a control marked
+    // data-no-row-click (sync chip, kebab) — those have their own handlers.
+    const handleRowClick = (e: React.MouseEvent<HTMLLIElement>) => {
+        if ((e.target as HTMLElement).closest('[data-no-row-click]')) return;
+        setEditing(true);
+    };
+
     return (
-        <li className="flex items-center gap-3.5 rounded-2xl bg-card px-4 py-3 ring-1 ring-border transition-colors hover:bg-muted/40">
-            <span
-                className="h-9 w-1 shrink-0 rounded-full"
-                style={{ backgroundColor: projectColor(record.projectId) }}
-                aria-hidden
-            />
-            <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium">
-                        {ticketKey(project?.key, record.ticketNumber)}
-                    </span>
-                    {project ? (
-                        <span className="truncate text-sm text-muted-foreground">
-                            {project.name}
+        <li
+            onClick={handleRowClick}
+            className="flex cursor-pointer flex-col rounded-2xl bg-card px-4 py-3 ring-1 ring-border transition-colors hover:bg-muted/40"
+        >
+            <div className="flex items-center gap-3.5">
+                <span
+                    className="h-9 w-1 shrink-0 rounded-full"
+                    style={{ backgroundColor: projectColor(record.projectId) }}
+                    aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium">
+                            {ticketKey(project?.key, record.ticketNumber)}
                         </span>
-                    ) : null}
+                        {project ? (
+                            <span className="truncate text-sm text-muted-foreground">
+                                {project.name}
+                            </span>
+                        ) : null}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className="font-mono tabular-nums">
+                            {formatClock(record.startAt)} – {formatClock(record.endAt)}
+                        </span>
+                        {recordTags.map((t) => (
+                            <Badge key={t.id} variant="secondary">
+                                {t.name}
+                            </Badge>
+                        ))}
+                    </div>
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <span className="font-mono tabular-nums">
-                        {formatClock(record.startAt)} – {formatClock(record.endAt)}
-                    </span>
-                    {recordTags.map((t) => (
-                        <Badge key={t.id} variant="secondary">
-                            {t.name}
-                        </Badge>
-                    ))}
-                </div>
+
+                <SyncBadge
+                    state={state}
+                    error={record.lastSyncError}
+                    onSync={state !== 'synced' && !isSyncing ? runSync : undefined}
+                    isSyncing={push.isPending}
+                />
+
+                <span className="font-mono text-sm font-semibold tabular-nums">
+                    {formatDuration(record.startAt, record.endAt)}
+                </span>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        render={
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Entry options"
+                                data-no-row-click
+                            />
+                        }
+                    >
+                        <MoreVertical />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditing(true)}>
+                            <Pencil />
+                            Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            disabled={isSyncing || state === 'synced'}
+                            onClick={runSync}
+                        >
+                            <Upload />
+                            {state === 'errored' ? 'Retry sync' : 'Sync now'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setConfirmingDelete(true)}
+                        >
+                            <Trash2 />
+                            Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
-            <SyncBadge state={state} error={record.lastSyncError} />
-
-            <span className="font-mono text-sm font-semibold tabular-nums">
-                {formatDuration(record.startAt, record.endAt)}
-            </span>
-
-            <DropdownMenu>
-                <DropdownMenuTrigger
-                    render={
-                        <Button variant="ghost" size="icon-sm" aria-label="Entry options" />
-                    }
-                >
-                    <MoreVertical />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditing(true)}>
-                        <Pencil />
-                        Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        disabled={isSyncing || state === 'synced'}
-                        onClick={() => {
-                            push.mutate(record, {
-                                onSuccess: () => {
-                                    toast.success('Synced to Jira');
-                                },
-                                onError: (cause) => {
-                                    const message =
-                                        cause instanceof Error ? cause.message : String(cause);
-                                    toast.error(`Sync failed: ${message}`);
-                                },
-                            });
-                        }}
-                    >
-                        <Upload />
-                        {state === 'errored' ? 'Retry sync' : 'Sync now'}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setConfirmingDelete(true)}
-                    >
-                        <Trash2 />
-                        Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            {state === 'errored' && record.lastSyncError ? (
+                <p className="mt-2 ml-4 text-xs text-destructive/90">
+                    {record.lastSyncError}
+                </p>
+            ) : null}
 
             {editing ? (
                 <EditRecordDialog
@@ -226,32 +251,58 @@ function RecordRow({ record }: { record: TimeRecord }) {
 }
 
 /**
- * Per-row sync indicator: one chip per state. Error shows the underlying
- * message in a tooltip so the user can see *why* without opening anything.
- * Synced shows a soft check so the user can confirm at a glance; never/stale
- * use neutral/amber to flag "you have unpushed work here".
+ * Per-row sync indicator. When the row has unpushed work and `onSync` is
+ * provided, the chip is itself the retry/sync button — the primary recovery
+ * affordance, with the kebab kept as secondary access. Synced is a static span.
  */
-function SyncBadge({ state, error }: { state: SyncState; error: string | null }) {
+function SyncBadge({
+    state,
+    error,
+    onSync,
+    isSyncing,
+}: {
+    state: SyncState;
+    error: string | null;
+    onSync?: () => void;
+    isSyncing?: boolean;
+}) {
     const config = SYNC_BADGE_CONFIG[state];
     const Icon = config.icon;
-    const chip = (
-        <span
-            className={cn(
-                'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium',
-                config.tone,
-            )}
-            aria-label={`Sync state: ${config.label}`}
+    const interactive = state !== 'synced' && !!onSync;
+    const actionLabel = state === 'errored' ? 'Retry sync' : 'Sync now';
+
+    const chipClass = cn(
+        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium',
+        config.tone,
+        interactive &&
+            'cursor-pointer transition-colors hover:brightness-110 disabled:cursor-default disabled:opacity-60',
+    );
+
+    const chip = interactive ? (
+        <button
+            type="button"
+            data-no-row-click
+            disabled={isSyncing}
+            onClick={onSync}
+            className={chipClass}
+            aria-label={`${config.label} — ${actionLabel}`}
         >
+            <Icon className="size-3" />
+            {isSyncing ? 'Syncing…' : config.label}
+        </button>
+    ) : (
+        <span className={chipClass} aria-label={`Sync state: ${config.label}`}>
             <Icon className="size-3" />
             {config.label}
         </span>
     );
+
     if (state !== 'errored' || !error) return chip;
     return (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger render={chip} />
-                <TooltipContent>{error}</TooltipContent>
+                <TooltipContent>{actionLabel} — {error}</TooltipContent>
             </Tooltip>
         </TooltipProvider>
     );
@@ -268,12 +319,12 @@ const SYNC_BADGE_CONFIG: Record<
     },
     synced: {
         icon: CheckCircle2,
-        tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        tone: 'border-success/30 bg-success/10 text-success',
         label: 'Synced',
     },
     stale: {
         icon: PencilLine,
-        tone: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        tone: 'border-warning/30 bg-warning/10 text-warning',
         label: 'Edited',
     },
     errored: {
@@ -428,7 +479,14 @@ function DeleteRecordDialog({
                     <Button
                         variant="destructive"
                         disabled={remove.isPending}
-                        onClick={() => remove.mutate(record.id, { onSuccess: onClose })}
+                        onClick={() =>
+                            remove.mutate(record.id, {
+                                onSuccess: () => {
+                                    toast.success('Entry deleted');
+                                    onClose();
+                                },
+                            })
+                        }
                     >
                         <Trash2 />
                         Delete entry

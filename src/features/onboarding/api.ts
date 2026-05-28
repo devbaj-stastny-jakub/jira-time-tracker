@@ -51,6 +51,8 @@ export interface JiraUser {
     accountId: string;
     displayName: string;
     emailAddress?: string;
+    /** Avatar URL set keyed by pixel size. Jira returns 16, 24, 32, 48. */
+    avatarUrls?: Partial<Record<'16x16' | '24x24' | '32x32' | '48x48', string>>;
 }
 
 /** Fetch the authenticated Jira user (`/myself`). Throws on non-2xx. */

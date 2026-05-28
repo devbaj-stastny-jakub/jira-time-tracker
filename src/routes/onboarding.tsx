@@ -38,9 +38,9 @@ function OnboardingPage() {
                 className="pointer-events-none absolute inset-0 opacity-60 bg-[linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] bg-size-[26px_26px] mask-[radial-gradient(100%_80%_at_50%_0%,black,transparent_75%)]"
             />
 
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full max-w-lg">
                 {/* Brand lockup — the same gradient mark the sidebar carries. */}
-                <div className="animate-in fade-in slide-in-from-bottom-2 mb-7 flex flex-col items-center gap-3 text-center duration-500">
+                <div className="animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-700 mb-7 flex flex-col items-center gap-3 text-center">
                     <div className="bg-linear-to-br from-primary to-primary/70 text-primary-foreground shadow-primary/30 ring-primary/20 flex size-12 items-center justify-center rounded-2xl shadow-lg ring-1">
                         <Timer className="size-6" />
                     </div>
@@ -48,23 +48,17 @@ function OnboardingPage() {
                         <span className="font-heading text-xl font-semibold tracking-tight">
                             Welcome to Timely
                         </span>
-                        <span className="text-muted-foreground text-[0.625rem] font-medium tracking-[0.18em] uppercase">
-                            Jira time tracker
-                        </span>
+                        <span className="eyebrow">Jira time tracker</span>
                     </div>
                 </div>
 
-                <Card className="animate-in fade-in slide-in-from-bottom-3 shadow-primary/5 w-full shadow-xl ring-1 ring-border duration-700">
+                <Card className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 shadow-primary/5 w-full shadow-xl ring-1 ring-border">
                     <CardHeader>
-                        <span className="text-primary text-[0.7rem] font-semibold tracking-[0.14em] uppercase">
-                            Setup
-                        </span>
                         <CardTitle className="font-heading text-lg tracking-tight">
                             Connect to Jira
                         </CardTitle>
                         <CardDescription>
-                            Enter your Jira connection details. Both tokens are validated
-                            before the app is unlocked.
+                            One quick setup. Validation runs automatically when you save.
                         </CardDescription>
                     </CardHeader>
 

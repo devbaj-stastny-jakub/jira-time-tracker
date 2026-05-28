@@ -1,26 +1,13 @@
 /**
  * Deterministic per-project color for the timeline. Jira projects carry no
  * color, so we hash the project id into a small curated palette — the same
- * project always gets the same swatch, with no storage or configuration.
+ * project always gets the same swatch.
  *
- * Colors are mid-tone hues chosen to stay legible on both the light and dark
- * timeline track. Blocks are rendered semi-transparent, so overlapping records
- * blend into a darker region.
+ * Colors are CSS variables (--project-1..--project-10) defined in index.css,
+ * so they shift between light and dark mode and can be re-themed centrally.
  */
-const PALETTE = [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#8b5cf6', // violet
-    '#ec4899', // pink
-    '#14b8a6', // teal
-    '#f97316', // orange
-    '#6366f1', // indigo
-    '#84cc16', // lime
-] as const;
+const PALETTE_SIZE = 10;
 
-/** Stable 32-bit FNV-1a hash of a string. */
 function hash(str: string): number {
     let h = 0x811c9dc5;
     for (let i = 0; i < str.length; i++) {
@@ -30,8 +17,22 @@ function hash(str: string): number {
     return h >>> 0;
 }
 
-/** A stable palette color for a project id (falls back gracefully for null). */
+function paletteIndex(projectId: string | null | undefined): number {
+    if (!projectId) return 0;
+    return hash(projectId) % PALETTE_SIZE;
+}
+
+/** A stable palette color for a project id, as a CSS `var(...)` reference. */
 export function projectColor(projectId: string | null | undefined): string {
-    if (!projectId) return PALETTE[0];
-    return PALETTE[hash(projectId) % PALETTE.length];
+    return `var(--project-${paletteIndex(projectId) + 1})`;
+}
+
+/**
+ * Same palette color but mixed with transparency. `alpha` is a 0..1 ratio
+ * (e.g. 0.5 → 50% opacity). Uses `color-mix` so the result is still themable
+ * via the CSS variable.
+ */
+export function projectColorAlpha(projectId: string | null | undefined, alpha: number): string {
+    const pct = Math.round(Math.max(0, Math.min(1, alpha)) * 100);
+    return `color-mix(in srgb, var(--project-${paletteIndex(projectId) + 1}) ${pct}%, transparent)`;
 }

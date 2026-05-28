@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import type { ActiveTimer } from './active-timer';
 import { type Classification, ClassificationFields } from './ClassificationFields';
 import { formatElapsed } from './format';
-import { projectColor } from './projectColor';
 import {
     useActiveTimer,
     useDiscardTimer,
@@ -36,9 +35,7 @@ export function TimerTab({
                     compact ? 'gap-3 py-2' : 'gap-6 py-6',
                 )}
             >
-                <p className="text-[0.625rem] font-semibold tracking-[0.18em] text-muted-foreground/60 uppercase">
-                    Ready
-                </p>
+                <p className="eyebrow">Ready</p>
                 {/* Ghost clock face: the instrument at rest. */}
                 <span
                     className={cn(
@@ -103,32 +100,43 @@ function RunningTimer({
     };
 
     const canStop = !!draft.projectId && draft.ticketNumber.trim().length > 0;
-    // The glow tracks the selected project so the console takes on its color.
-    const accent = projectColor(draft.projectId);
+
+    const missing: string[] = [];
+    if (!draft.projectId) missing.push('project');
+    if (draft.ticketNumber.trim().length === 0) missing.push('ticket');
+    const blockedReason = missing.length > 0 ? `Add ${missing.join(' and ')} to save` : null;
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!canStop || stop.isPending) return;
+        stop.mutate(undefined, { onSuccess: onStopped });
+    };
 
     return (
-        <div className={compact ? 'space-y-3' : 'space-y-8'}>
+        <form onSubmit={handleSubmit} className={compact ? 'space-y-3' : 'space-y-8'}>
             <div
                 className={cn(
                     'relative flex flex-col items-center',
                     compact ? 'gap-1' : 'gap-3 py-2',
                 )}
             >
-                {/* Soft radial bloom in the project's color, behind the readout. */}
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute top-1/2 left-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-3xl transition-colors duration-700"
-                    style={{ background: `radial-gradient(circle, ${accent}, transparent 70%)` }}
-                />
-                <span className="relative inline-flex items-center gap-2 rounded-full bg-primary/8 px-3 py-1 ring-1 ring-primary/15">
-                    <span className="relative flex size-2 items-center justify-center">
-                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-60" />
-                        <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+                {compact ? (
+                    // Quieter live indicator for the small ambient panel.
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="size-1.5 rounded-full bg-running" />
+                        <span className="text-[0.625rem] font-medium tracking-wide text-running uppercase">
+                            Live
+                        </span>
                     </span>
-                    <span className="text-[0.625rem] font-semibold tracking-[0.18em] text-primary/80 uppercase">
-                        Recording
+                ) : (
+                    <span className="relative inline-flex items-center gap-2 rounded-full bg-primary/8 px-3 py-1 ring-1 ring-primary/15">
+                        <span className="relative flex size-2 items-center justify-center">
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-running opacity-60" />
+                            <span className="relative inline-flex size-1.5 rounded-full bg-running" />
+                        </span>
+                        <span className="eyebrow text-primary/80">Recording</span>
                     </span>
-                </span>
+                )}
                 <Elapsed startAt={active.startAt} compact={compact} />
             </div>
 
@@ -136,23 +144,31 @@ function RunningTimer({
                 <ClassificationFields idPrefix="timer" value={draft} onChange={update} />
             </div>
 
-            <div className="flex justify-end gap-2">
-                <Button
-                    variant="outline"
-                    onClick={() => discard.mutate()}
-                    disabled={discard.isPending}
-                >
-                    <X /> Discard
-                </Button>
-                <Button
-                    className="px-5 shadow-sm shadow-primary/20"
-                    onClick={() => stop.mutate(undefined, { onSuccess: onStopped })}
-                    disabled={!canStop || stop.isPending}
-                >
-                    <Square /> Stop & save
-                </Button>
+            <div className="flex items-center justify-end gap-3">
+                {blockedReason ? (
+                    <p className="text-xs text-muted-foreground" role="status">
+                        {blockedReason}
+                    </p>
+                ) : null}
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => discard.mutate()}
+                        disabled={discard.isPending}
+                    >
+                        <X /> Discard
+                    </Button>
+                    <Button
+                        type="submit"
+                        className="px-5 shadow-sm shadow-primary/20"
+                        disabled={!canStop || stop.isPending}
+                    >
+                        <Square /> Stop & save
+                    </Button>
+                </div>
             </div>
-        </div>
+        </form>
     );
 }
 
@@ -166,11 +182,51 @@ function Elapsed({ startAt, compact }: { startAt: string; compact: boolean }) {
     return (
         <span
             className={cn(
-                'relative font-mono leading-none font-semibold tracking-tight tabular-nums',
+                'relative inline-flex font-mono leading-none font-semibold tracking-tight tabular-nums',
                 compact ? 'text-4xl' : 'text-6xl sm:text-7xl',
             )}
         >
-            {formatElapsed(now - new Date(startAt).getTime())}
+            <TickerText value={formatElapsed(now - new Date(startAt).getTime())} />
+        </span>
+    );
+}
+
+function TickerText({ value }: { value: string }) {
+    const chars = Array.from(value);
+    return (
+        <>
+            {chars.map((ch, i) => (
+                <TickerChar key={i} value={ch} />
+            ))}
+        </>
+    );
+}
+
+/** A single character slot that animates: old char slides up out, new comes up from below. */
+function TickerChar({ value }: { value: string }) {
+    const [lastSeen, setLastSeen] = useState(value);
+    const [from, setFrom] = useState<string | null>(null);
+
+    if (lastSeen !== value) {
+        setLastSeen(value);
+        setFrom(lastSeen);
+    }
+
+    useEffect(() => {
+        if (from === null) return;
+        const t = setTimeout(() => setFrom(null), 250);
+        return () => clearTimeout(t);
+    }, [from]);
+
+    return (
+        <span className="relative inline-block overflow-hidden align-baseline">
+            <span className={from === null ? 'block' : 'invisible block'}>{value}</span>
+            {from !== null ? (
+                <>
+                    <span className="timer-tick-out absolute inset-0 block">{from}</span>
+                    <span className="timer-tick-in absolute inset-0 block">{value}</span>
+                </>
+            ) : null}
         </span>
     );
 }

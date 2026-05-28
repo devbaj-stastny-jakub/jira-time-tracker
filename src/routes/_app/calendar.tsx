@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+    AlertTriangle,
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+    CircleDashed,
+    PencilLine,
+} from 'lucide-react';
 
 import { DayTimeline } from '@/features/timer/DayTimeline';
 import { formatDurationMs } from '@/features/timer/format';
@@ -88,35 +97,21 @@ function isoWeek(date: Date): number {
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
 }
 
-/** Rose / amber / emerald tones plus a translucent cell fill for the heatmap. */
+/** Success / warning / danger tones plus a translucent cell fill for the heatmap. */
 function dayTone(ms: number): { text: string; bar: string; fill: string } {
     if (ms >= 7.5 * HOUR)
-        return {
-            text: 'text-emerald-600 dark:text-emerald-400',
-            bar: 'bg-emerald-500',
-            fill: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-        };
+        return { text: 'text-success', bar: 'bg-success', fill: 'bg-success/10' };
     if (ms >= 4 * HOUR)
-        return {
-            text: 'text-amber-600 dark:text-amber-400',
-            bar: 'bg-amber-500',
-            fill: 'bg-amber-500/10 dark:bg-amber-500/15',
-        };
-    return {
-        text: 'text-rose-600 dark:text-rose-400',
-        bar: 'bg-rose-500',
-        fill: 'bg-rose-500/10 dark:bg-rose-500/15',
-    };
+        return { text: 'text-warning', bar: 'bg-warning', fill: 'bg-warning/10' };
+    return { text: 'text-destructive', bar: 'bg-destructive', fill: 'bg-destructive/10' };
 }
 
 /** Same palette but graded against an arbitrary (possibly prorated) target. */
 function ratioTone(ms: number, target: number): { text: string; bar: string } {
     const ratio = target > 0 ? ms / target : 0;
-    if (ratio >= 0.95)
-        return { text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' };
-    if (ratio >= 0.5)
-        return { text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' };
-    return { text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500' };
+    if (ratio >= 0.95) return { text: 'text-success', bar: 'bg-success' };
+    if (ratio >= 0.5) return { text: 'text-warning', bar: 'bg-warning' };
+    return { text: 'text-destructive', bar: 'bg-destructive' };
 }
 
 function durationMs(r: TimeRecord): number {
@@ -274,15 +269,17 @@ function CalendarPage() {
 
     return (
         <div className="mx-auto w-full max-w-5xl space-y-8">
-            <CalendarHeading
-                year={viewed.year}
-                month={viewed.month}
-                totalsByDay={totalsByDay}
-                liveMs={liveMs}
-                today={today}
-            />
+            <div className="animate-in fade-in slide-in-from-top-3 duration-500">
+                <CalendarHeading
+                    year={viewed.year}
+                    month={viewed.month}
+                    totalsByDay={totalsByDay}
+                    liveMs={liveMs}
+                    today={today}
+                />
+            </div>
 
-            <section className="relative overflow-hidden rounded-3xl bg-card ring-1 ring-border">
+            <section className="animate-in fade-in zoom-in-95 duration-500 delay-100 relative overflow-hidden rounded-3xl bg-card ring-1 ring-border">
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-linear-to-b from-primary/6 via-transparent to-transparent"
@@ -295,6 +292,11 @@ function CalendarPage() {
                         onNext={goNextMonth}
                         onNextYear={goNextYear}
                         onToday={goToday}
+                        isOnToday={
+                            viewed.year === today.getFullYear() &&
+                            viewed.month === today.getMonth() &&
+                            isSameDay(selected, today)
+                        }
                     />
 
                     <div
@@ -305,10 +307,7 @@ function CalendarPage() {
                         aria-busy={isPending || undefined}
                     >
                         {WEEKDAYS.map((label) => (
-                            <div
-                                key={label}
-                                className="px-1 pb-1 text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase"
-                            >
+                            <div key={label} className="eyebrow px-1 pb-1">
                                 {label}
                             </div>
                         ))}
@@ -337,12 +336,14 @@ function CalendarPage() {
                 </div>
             </section>
 
-            <SelectedDayDetail
-                date={selected}
-                today={today}
-                records={selectedRecords}
-                isPending={isPending}
-            />
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 delay-200">
+                <SelectedDayDetail
+                    date={selected}
+                    today={today}
+                    records={selectedRecords}
+                    isPending={isPending}
+                />
+            </div>
         </div>
     );
 }
@@ -393,20 +394,16 @@ function CalendarHeading({
 
     return (
         <header className="flex flex-wrap items-end justify-between gap-4">
-            <div className="animate-in fade-in slide-in-from-left-2 space-y-2 duration-500">
-                <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
-                    {eyebrow}
-                </p>
+            <div className="space-y-2">
+                <p className="eyebrow">{eyebrow}</p>
                 <h1 className="font-heading text-3xl font-semibold tracking-tight">
                     {monthLabel}
                 </h1>
             </div>
 
-            <div className="animate-in fade-in slide-in-from-right-2 flex min-w-56 flex-col gap-2 rounded-2xl bg-card px-4 py-2.5 ring-1 ring-border duration-500">
+            <div className="flex min-w-56 flex-col gap-2 rounded-2xl bg-card px-4 py-2.5 ring-1 ring-border">
                 <div className="flex items-baseline gap-2">
-                    <span className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
-                        Tracked
-                    </span>
+                    <span className="eyebrow">Tracked</span>
                     <span
                         className={cn(
                             'font-mono text-lg leading-none font-semibold tabular-nums',
@@ -419,7 +416,14 @@ function CalendarHeading({
                         / {formatDurationMs(target)}
                     </span>
                 </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                    className="h-1 w-full overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={target}
+                    aria-valuenow={total}
+                    aria-label="Month-to-date tracked against target"
+                >
                     <div
                         className={cn('h-full rounded-full transition-all duration-700', tone.bar)}
                         style={{ width: `${pct}%` }}
@@ -447,12 +451,14 @@ function CalendarNav({
     onNext,
     onNextYear,
     onToday,
+    isOnToday,
 }: {
     onPrevYear: () => void;
     onPrev: () => void;
     onNext: () => void;
     onNextYear: () => void;
     onToday: () => void;
+    isOnToday: boolean;
 }) {
     return (
         <div className="flex items-center justify-end gap-0.5">
@@ -462,7 +468,13 @@ function CalendarNav({
             <Button variant="ghost" size="icon-sm" onClick={onPrev} aria-label="Previous month">
                 <ChevronLeft />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onToday} className="mx-1">
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToday}
+                disabled={isOnToday}
+                className="mx-1"
+            >
                 Today
             </Button>
             <Button variant="ghost" size="icon-sm" onClick={onNext} aria-label="Next month">
@@ -503,7 +515,6 @@ function DayCell({
     const hasRecords = inMonth && totalMs > 0;
 
     const tone = hasRecords ? dayTone(totalMs) : null;
-    const pct = Math.min(100, (totalMs / TARGET_PER_DAY) * 100);
 
     return (
         <button
@@ -515,10 +526,14 @@ function DayCell({
             className={cn(
                 'group relative flex h-20 flex-col justify-between overflow-hidden rounded-xl p-2 text-left ring-1 ring-border transition-[background,box-shadow,opacity] duration-150',
                 hasRecords ? tone!.fill : inMonth ? 'bg-muted/30' : 'bg-transparent',
-                inMonth && isWeekend && 'ring-rose-500/30 dark:ring-rose-400/30',
+                // Weekend is decorative-only — neutral hatch, no color collision
+                // with the rose "missed target" tone.
+                inMonth && isWeekend && 'ring-muted-foreground/15',
                 !isDisabled && 'cursor-pointer hover:shadow-sm hover:ring-foreground/30',
                 isDisabled && 'opacity-40',
-                isToday && !isSelected && 'ring-primary/60',
+                // Today is signaled by the dot under the date number, not the
+                // ring. Ring is reserved for selection so the two states never
+                // conflate.
                 isSelected && 'ring-2 ring-primary',
                 isSelected && !hasRecords && 'bg-primary/10',
             )}
@@ -526,76 +541,81 @@ function DayCell({
             {inMonth && isWeekend ? (
                 <span
                     aria-hidden
-                    className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_5px,var(--color-rose-500)_5px,var(--color-rose-500)_6px)] opacity-15 dark:opacity-25"
+                    className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent_0,transparent_5px,var(--color-muted-foreground)_5px,var(--color-muted-foreground)_6px)] opacity-[0.06] dark:opacity-[0.1]"
                 />
             ) : null}
             <div className="relative flex items-start justify-between gap-1">
-                <span
-                    className={cn(
-                        'font-mono text-sm font-semibold tabular-nums',
-                        !inMonth && 'text-muted-foreground',
-                        isToday && 'text-primary',
-                    )}
-                >
-                    {date.getDate()}
-                </span>
+                <div className="flex flex-col items-start">
+                    <span
+                        className={cn(
+                            'font-mono text-sm font-semibold tabular-nums',
+                            !inMonth && 'text-muted-foreground',
+                            isToday && 'text-primary',
+                        )}
+                    >
+                        {date.getDate()}
+                    </span>
+                    {/* Today gets a small primary dot under the number, freeing
+                        the ring for selection. */}
+                    {isToday ? (
+                        <span
+                            aria-hidden
+                            className="mt-0.5 size-1 rounded-full bg-primary"
+                        />
+                    ) : null}
+                </div>
                 <div className="mt-1 flex items-center gap-1">
-                    {inMonth && syncState ? <DaySyncDot state={syncState} /> : null}
+                    {inMonth && syncState ? <DaySyncGlyph state={syncState} /> : null}
                     {isRecording ? (
                         <span
-                            className="relative flex size-1.5 items-center justify-center"
+                            className="relative flex size-2 items-center justify-center"
                             aria-label="Recording"
+                            title="Timer recording"
                         >
-                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-60" />
-                            <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-running opacity-60" />
+                            <span className="relative inline-flex size-1.5 rounded-full bg-running" />
                         </span>
                     ) : null}
                 </div>
             </div>
 
             {hasRecords ? (
-                <div className="relative space-y-1.5">
-                    <span
-                        className={cn(
-                            'block font-mono text-[0.6875rem] font-semibold tabular-nums',
-                            tone!.text,
-                        )}
-                    >
-                        {formatDurationMs(totalMs)}
-                    </span>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-foreground/10">
-                        <div
-                            className={cn('h-full rounded-full transition-all', tone!.bar)}
-                            style={{ width: `${pct}%` }}
-                        />
-                    </div>
-                </div>
+                <span
+                    className={cn(
+                        'relative font-mono text-[0.75rem] font-semibold tabular-nums',
+                        tone!.text,
+                    )}
+                >
+                    {formatDurationMs(totalMs)}
+                </span>
             ) : null}
         </button>
     );
 }
 
 /**
- * Tiny day-cell sync rollup. Synced shows a soft emerald check (positive
- * affirmation that the day's work is in Jira); pending / stale / errored show
- * a colored dot. `title` doubles as accessible label and native browser tooltip.
+ * Tiny day-cell sync rollup. Each state has a distinct glyph (check / pencil /
+ * dashed circle / alert triangle) matching the row-level badge, so the visual
+ * language is consistent and survives color clashes with the heatmap fill.
  */
-function DaySyncDot({ state }: { state: DaySyncState }) {
-    const config = DAY_SYNC_DOT_CONFIG[state];
+function DaySyncGlyph({ state }: { state: DaySyncState }) {
+    const config = DAY_SYNC_GLYPH_CONFIG[state];
+    const Icon = config.icon;
     return (
-        <span
-            aria-label={config.label}
-            title={config.label}
-            className={cn('size-1.5 rounded-full', config.color)}
-        />
+        <span aria-label={config.label} title={config.label} className="inline-flex">
+            <Icon className={cn('size-3', config.color)} />
+        </span>
     );
 }
 
-const DAY_SYNC_DOT_CONFIG: Record<DaySyncState, { color: string; label: string }> = {
-    errored: { color: 'bg-destructive', label: 'Sync failed' },
-    stale: { color: 'bg-amber-500', label: 'Edited since last sync' },
-    pending: { color: 'bg-muted-foreground/50', label: 'Not yet synced' },
-    synced: { color: 'bg-emerald-500/70', label: 'Synced to Jira' },
+const DAY_SYNC_GLYPH_CONFIG: Record<
+    DaySyncState,
+    { icon: typeof Check; color: string; label: string }
+> = {
+    errored: { icon: AlertTriangle, color: 'text-destructive', label: 'Sync failed' },
+    stale: { icon: PencilLine, color: 'text-warning', label: 'Edited since last sync' },
+    pending: { icon: CircleDashed, color: 'text-muted-foreground/70', label: 'Not yet synced' },
+    synced: { icon: Check, color: 'text-success', label: 'Synced to Jira' },
 };
 
 function SelectedDayDetail({
@@ -621,9 +641,7 @@ function SelectedDayDetail({
         <div className="space-y-6">
             <section className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
-                        {eyebrow}
-                    </p>
+                    <p className="eyebrow">{eyebrow}</p>
                     <SyncDayButton date={date} />
                 </div>
                 <DayTimeline date={date} records={records} />

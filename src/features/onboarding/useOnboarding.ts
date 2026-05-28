@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
-import { type Credentials, saveCredentials } from '@/shared/credentials/credentials';
+import {
+    type Credentials,
+    clearCredentials,
+    saveCredentials,
+} from '@/shared/credentials/credentials';
 import { credentialsKey, useCredentials } from '@/shared/credentials/useCredentials';
 import { projectsKey } from '@/shared/projects/useProjects';
 import { syncProjects } from '@/shared/projects/sync';
@@ -102,6 +106,23 @@ export function useUpdateCredentials() {
                 queryClient.invalidateQueries({ queryKey: credentialsKey }),
                 queryClient.invalidateQueries({ queryKey: currentUserKey }),
             ]);
+        },
+    });
+}
+
+/**
+ * Disconnect from Jira: wipe credentials from the keychain, drop all cached
+ * Jira-derived data, and route back to onboarding. The user re-enters tokens
+ * to come back in.
+ */
+export function useSignOut() {
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    return useMutation<void, Error, void>({
+        mutationFn: () => clearCredentials(),
+        onSuccess: async () => {
+            queryClient.clear();
+            await navigate({ to: '/onboarding' });
         },
     });
 }

@@ -97,9 +97,7 @@ export function RecordForm({
                         compact ? 'gap-1' : 'gap-2 py-1',
                     )}
                 >
-                    <p className="text-[0.625rem] font-semibold tracking-[0.18em] text-muted-foreground/60 uppercase">
-                        Duration
-                    </p>
+                    <p className="eyebrow">Duration</p>
                     <span
                         className={cn(
                             'font-mono leading-none font-semibold tracking-tight tabular-nums',
@@ -190,16 +188,46 @@ export function RecordForm({
                 <p className="text-sm text-destructive">End time must be after start time.</p>
             ) : null}
 
-            <div className="flex justify-end gap-2">
-                {onCancel ? (
-                    <Button type="button" variant="outline" onClick={onCancel}>
-                        Cancel
-                    </Button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+                {!canSubmit && !isPending && !rangeInvalid ? (
+                    <BlockedReason
+                        projectMissing={!state.classification.projectId}
+                        ticketMissing={state.classification.ticketNumber.trim().length === 0}
+                        timeMissing={startIso === null || endIso === null}
+                    />
                 ) : null}
-                <Button type="submit" disabled={!canSubmit}>
-                    {submitLabel}
-                </Button>
+                <div className="flex gap-2">
+                    {onCancel ? (
+                        <Button type="button" variant="outline" onClick={onCancel}>
+                            Cancel
+                        </Button>
+                    ) : null}
+                    <Button type="submit" disabled={!canSubmit}>
+                        {submitLabel}
+                    </Button>
+                </div>
             </div>
         </form>
+    );
+}
+
+function BlockedReason({
+    projectMissing,
+    ticketMissing,
+    timeMissing,
+}: {
+    projectMissing: boolean;
+    ticketMissing: boolean;
+    timeMissing: boolean;
+}) {
+    const parts: string[] = [];
+    if (projectMissing) parts.push('project');
+    if (ticketMissing) parts.push('ticket');
+    if (timeMissing) parts.push('time range');
+    if (parts.length === 0) return null;
+    return (
+        <p className="text-xs text-muted-foreground" role="status">
+            Missing: {parts.join(', ')}
+        </p>
     );
 }

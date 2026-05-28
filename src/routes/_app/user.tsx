@@ -1,17 +1,37 @@
 import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import {
+    AlertCircle,
+    ExternalLink,
+    Loader2,
+    LogOut,
+    Monitor,
+    Moon,
+    RefreshCw,
+    Sun,
+} from 'lucide-react';
 
-import { Avatar, AvatarBadge, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCredentials } from '@/shared/credentials/useCredentials';
 import { CredentialsForm } from '@/features/onboarding/CredentialsForm';
 import {
     useCurrentUser,
+    useSignOut,
     useUpdateCredentials,
 } from '@/features/onboarding/useOnboarding';
 
@@ -28,21 +48,15 @@ function UserPage() {
 
     return (
         <div className="space-y-6">
-            <header className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <p className="text-primary text-xs font-semibold tracking-[0.14em] uppercase">
-                    Account
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-                    Your connection
-                </h1>
+            <header className="animate-in fade-in slide-in-from-top-3 duration-500">
+                <h1 className="text-2xl font-semibold tracking-tight">Your connection</h1>
             </header>
 
-            <IdentityCard />
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                <IdentityCard />
+            </div>
 
-            <Card
-                className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-150 duration-500"
-                size="sm"
-            >
+            <Card size="sm" className="animate-in fade-in slide-in-from-left-4 duration-500 delay-200">
                 <CardContent className="pt-6">
                     {credentials ? (
                         <CredentialsForm
@@ -73,44 +87,133 @@ function UserPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 delay-300">
+                <Appearance />
+            </div>
+
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 delay-500">
+                <DangerZone />
+            </div>
         </div>
     );
 }
 
 /**
- * Live identity banner: who Jira thinks you are right now. Doubles as a
- * connection health indicator — a failed `/myself` surfaces here immediately.
+ * Theme picker: Light / Dark / System. Persists via next-themes' localStorage
+ * and applies the `.dark` class on `<html>` so the CSS tokens swap.
  */
-function IdentityCard() {
-    const { data: user, isPending, isError } = useCurrentUser();
-
-    const name = user?.displayName ?? (isError ? 'Not connected' : 'Loading…');
-    const detail = user?.emailAddress ?? (isError ? 'Check your credentials below' : '');
+function Appearance() {
+    const { theme, setTheme } = useTheme();
+    const current = theme ?? 'system';
+    const options = [
+        { value: 'light', label: 'Light', icon: Sun },
+        { value: 'dark', label: 'Dark', icon: Moon },
+        { value: 'system', label: 'System', icon: Monitor },
+    ] as const;
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both relative overflow-hidden rounded-2xl border delay-75 duration-500">
-            {/* Cobalt wash + faint grid for depth without stealing focus. */}
+        <section aria-labelledby="appearance-heading" className="space-y-3">
+            <div>
+                <h2 id="appearance-heading" className="text-sm font-semibold">
+                    Appearance
+                </h2>
+                <p className="text-muted-foreground text-xs">
+                    Match the system, or pin a theme.
+                </p>
+            </div>
+            <div
+                role="radiogroup"
+                aria-labelledby="appearance-heading"
+                className="grid grid-cols-3 gap-2"
+            >
+                {options.map(({ value, label, icon: Icon }) => {
+                    const active = current === value;
+                    return (
+                        <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            onClick={() => setTheme(value)}
+                            className={cn(
+                                'flex flex-col items-center gap-2 rounded-2xl border p-3 text-sm transition-colors',
+                                active
+                                    ? 'border-primary bg-primary/5 text-foreground ring-1 ring-primary'
+                                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                            )}
+                        >
+                            <Icon className="size-5" />
+                            {label}
+                        </button>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+/**
+ * Live identity banner: who Jira thinks you are right now, against which
+ * tenant. Doubles as connection health — a failed `/myself` surfaces here
+ * immediately with a retry path.
+ */
+function IdentityCard() {
+    const { data: credentials } = useCredentials();
+    const { data: user, isPending, isError, error, refetch, isFetching } = useCurrentUser();
+
+    const name = user?.displayName ?? (isError ? 'Not connected' : 'Loading…');
+    const detail = user?.emailAddress ?? (isError ? 'Authentication failed' : '');
+    const host = (() => {
+        if (!credentials?.base_url) return null;
+        try {
+            return new URL(credentials.base_url).host;
+        } catch {
+            return credentials.base_url;
+        }
+    })();
+
+    const errorMessage = isError
+        ? (error instanceof Error ? error.message : String(error)).replace(
+              /^Jira \/myself returned /,
+              '',
+          )
+        : null;
+
+    return (
+        <div className="relative overflow-hidden rounded-2xl border">
+            {/* Decorative wash — gradient shifts to destructive when something's
+                wrong so the surface itself reports health. pointer-events-none
+                so it never intercepts clicks on overlaid content. */}
             <div
                 aria-hidden
-                className="absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent"
-            />
-            <div
-                aria-hidden
-                className="absolute inset-0 opacity-60 [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(120%_120%_at_85%_0%,black,transparent_70%)]"
+                className={cn(
+                    'pointer-events-none absolute inset-0 bg-gradient-to-br',
+                    isError
+                        ? 'from-destructive/15 via-destructive/5 to-transparent'
+                        : 'from-primary/15 via-primary/5 to-transparent',
+                )}
             />
 
             <div className="relative flex items-center gap-4 p-5">
                 <Avatar size="lg" className="ring-2 ring-background">
+                    {user?.avatarUrls?.['48x48'] ? (
+                        <AvatarImage src={user.avatarUrls['48x48']} alt={user.displayName} />
+                    ) : null}
                     <AvatarFallback className="bg-primary/12 text-primary font-medium">
                         {user ? initials(user.displayName) : <UserGlyph />}
                     </AvatarFallback>
                     <AvatarBadge
+                        role="status"
+                        aria-label={
+                            isError ? 'Disconnected' : user ? 'Connected' : 'Connecting'
+                        }
                         className={cn(
                             isError
                                 ? 'bg-destructive'
                                 : user
-                                  ? 'bg-emerald-500'
-                                  : 'bg-amber-500',
+                                  ? 'bg-success'
+                                  : 'bg-warning',
                         )}
                     />
                 </Avatar>
@@ -120,14 +223,37 @@ function IdentityCard() {
                     {detail ? (
                         <p className="text-muted-foreground truncate text-sm">{detail}</p>
                     ) : null}
+                    {host ? (
+                        <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground/80">
+                            {host}
+                        </p>
+                    ) : null}
                 </div>
 
-                <ConnectionBadge
-                    isPending={isPending}
-                    isError={isError}
-                    connected={!!user}
-                />
+                <div className="flex items-center gap-2">
+                    <ConnectionBadge
+                        isPending={isPending || isFetching}
+                        isError={isError}
+                        connected={!!user}
+                    />
+                    {isError ? (
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="Retry connection"
+                            onClick={() => refetch()}
+                        >
+                            <RefreshCw />
+                        </Button>
+                    ) : null}
+                </div>
             </div>
+
+            {isError && errorMessage ? (
+                <div className="relative border-t bg-destructive/5 px-5 py-3 text-xs text-destructive/90">
+                    {errorMessage}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -153,21 +279,82 @@ function ConnectionBadge({
         return (
             <Badge
                 variant="outline"
-                className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                className="gap-1.5 border-success/30 bg-success/10 text-success"
             >
-                <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60" />
-                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-                </span>
-                Connected
+                <span className="size-2 rounded-full bg-success" />
+                {isPending ? 'Refreshing…' : 'Connected'}
             </Badge>
         );
     }
     return (
         <Badge variant="outline" className="text-muted-foreground gap-1.5">
-            {isPending ? <Loader2 className="animate-spin" /> : null}
+            <Loader2 className="size-3 animate-spin" />
             Connecting
         </Badge>
+    );
+}
+
+/**
+ * Sign-out / disconnect. Two-step confirmation since it wipes credentials and
+ * forces the user back through onboarding to come back in.
+ */
+function DangerZone() {
+    const [confirming, setConfirming] = useState(false);
+    const signOut = useSignOut();
+
+    return (
+        <section
+            aria-labelledby="danger-zone-heading"
+            className="space-y-3 rounded-2xl border border-destructive/20 bg-destructive/[0.02] p-4"
+        >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="danger-zone-heading" className="text-sm font-semibold text-destructive">
+                        Disconnect
+                    </h2>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                        Wipes credentials from the keychain and signs you out.
+                    </p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setConfirming(true)}
+                >
+                    <LogOut />
+                    Disconnect
+                </Button>
+            </div>
+
+            {confirming ? (
+                <Dialog open onOpenChange={(open) => !open && setConfirming(false)}>
+                    <DialogContent showCloseButton={false} className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Disconnect from Jira?</DialogTitle>
+                            <DialogDescription>
+                                Your stored credentials will be removed from the keychain
+                                and you&rsquo;ll be signed out. Local time records and
+                                synced reference data are kept.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setConfirming(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                disabled={signOut.isPending}
+                                onClick={() => signOut.mutate()}
+                            >
+                                <LogOut />
+                                Disconnect
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            ) : null}
+        </section>
     );
 }
 
@@ -192,5 +379,5 @@ function initials(name: string): string {
 }
 
 function UserGlyph() {
-    return <span className="text-sm">··</span>;
+    return <ExternalLink className="size-4" />;
 }

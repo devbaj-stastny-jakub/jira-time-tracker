@@ -23,20 +23,45 @@ export const Route = createFileRoute('/_app/settings')({
 });
 
 function SettingsPage() {
+    const projectsSync = useSyncProjects();
+    const tagsSync = useSyncTags();
+    const isSyncingAny = projectsSync.isPending || tagsSync.isPending;
+
     return (
         <div className="space-y-6">
-            <header className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <p className="text-primary text-xs font-semibold tracking-[0.14em] uppercase">
-                    Workspace
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground mt-1 text-sm">
-                    Reference data pulled from Jira. Sync to keep your projects and
-                    tags current.
-                </p>
+            <header className="animate-in fade-in slide-in-from-top-3 duration-500 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <p className="eyebrow">Reference data</p>
+                    <h1 className="mt-1 text-2xl font-semibold tracking-tight">Sync</h1>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                        Projects and tags pulled from your Jira instance. Sync to keep
+                        the pickers current.
+                    </p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isSyncingAny}
+                    onClick={() => {
+                        projectsSync.mutate();
+                        tagsSync.mutate();
+                    }}
+                >
+                    {isSyncingAny ? (
+                        <>
+                            <Loader2 className="animate-spin" />
+                            Syncing all…
+                        </>
+                    ) : (
+                        <>
+                            <RefreshCw />
+                            Sync all
+                        </>
+                    )}
+                </Button>
             </header>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
                 <ProjectsSection />
                 <TagsSection />
             </div>
@@ -60,7 +85,7 @@ function ProjectsSection() {
             error={sync.error}
             syncedAt={meta.data?.projectsSyncedAt}
             onSync={() => sync.mutate()}
-            delay="delay-75"
+            className="animate-in fade-in slide-in-from-left-4 duration-500 delay-100"
         />
     );
 }
@@ -81,7 +106,7 @@ function TagsSection() {
             error={sync.error}
             syncedAt={meta.data?.tagsSyncedAt}
             onSync={() => sync.mutate()}
-            delay="delay-150"
+            className="animate-in fade-in slide-in-from-right-4 duration-500 delay-200"
         />
     );
 }
@@ -99,8 +124,7 @@ interface SyncCardProps {
     /** Last-synced time (epoch ms); undefined when never synced. */
     syncedAt: number | undefined;
     onSync: () => void;
-    /** Tailwind animation-delay class for the staggered entrance. */
-    delay: string;
+    className?: string;
 }
 
 function SyncCard({
@@ -114,25 +138,17 @@ function SyncCard({
     error,
     syncedAt,
     onSync,
-    delay,
+    className,
 }: SyncCardProps) {
     return (
         <section
+            aria-busy={isSyncing || undefined}
+            aria-live="polite"
             className={cn(
-                'animate-in fade-in slide-in-from-bottom-3 fill-mode-both relative flex flex-col overflow-hidden rounded-4xl border duration-500',
-                delay,
+                'relative flex flex-col overflow-hidden rounded-4xl border bg-muted/40',
+                className,
             )}
         >
-            {/* Cobalt wash + faint grid for depth, echoing the identity banner. */}
-            <div
-                aria-hidden
-                className="absolute inset-0 bg-gradient-to-br from-primary/12 via-primary/4 to-transparent"
-            />
-            <div
-                aria-hidden
-                className="absolute inset-0 opacity-60 [background-image:linear-gradient(var(--border)_1px,transparent_1px),linear-gradient(90deg,var(--border)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(120%_120%_at_90%_0%,black,transparent_65%)]"
-            />
-
             <div className="relative flex flex-1 flex-col gap-5 p-5">
                 <div className="flex items-start gap-3.5">
                     <div className="bg-primary/10 text-primary ring-primary/15 flex size-11 shrink-0 items-center justify-center rounded-2xl ring-1">
@@ -155,7 +171,7 @@ function SyncCard({
 
                 <div className="mt-auto border-t pt-4">
                     <Button
-                        variant="outline"
+                        variant={isError ? 'default' : 'outline'}
                         size="sm"
                         className="w-full"
                         disabled={isSyncing}
@@ -201,7 +217,7 @@ function CountMetric({
     if (count === 0) {
         return (
             <div>
-                <p className="text-3xl font-semibold tracking-tight tabular-nums">0</p>
+                <p className="text-4xl font-semibold tracking-tight tabular-nums">0</p>
                 <p className="text-muted-foreground mt-1 text-sm">
                     No {itemNoun}s yet — sync to pull them in.
                 </p>
@@ -221,7 +237,11 @@ function CountMetric({
                 </span>
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-                Last synced {formatRelative(syncedAt)}
+                {syncedAt ? (
+                    <>Last synced {formatRelative(syncedAt)}</>
+                ) : (
+                    <em className="not-italic text-muted-foreground/70">Never synced</em>
+                )}
             </p>
         </div>
     );
@@ -230,7 +250,7 @@ function CountMetric({
 /**
  * At-a-glance sync health, reusing the connection-health palette: emerald when
  * freshly synced, amber when stale or never synced, destructive on a failed
- * sync. Only the fresh state pulses.
+ * sync.
  */
 function FreshnessBadge({
     isError,
@@ -269,10 +289,10 @@ function FreshnessBadge({
             <span
                 className={cn(
                     base,
-                    'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                    'border-warning/30 bg-warning/10 text-warning',
                 )}
             >
-                <span className="size-2 rounded-full bg-amber-500" />
+                <span className="size-2 rounded-full bg-warning" />
                 Stale
             </span>
         );
@@ -282,13 +302,10 @@ function FreshnessBadge({
         <span
             className={cn(
                 base,
-                'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                'border-success/30 bg-success/10 text-success',
             )}
         >
-            <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-            </span>
+            <span className="size-2 rounded-full bg-success" />
             Synced
         </span>
     );
@@ -306,7 +323,10 @@ function SyncError({ error }: { error: unknown }) {
                     : "Couldn't sync. Check your connection and retry."}
             </p>
             {!auth ? (
-                <p className="text-muted-foreground text-xs break-all">{detail}</p>
+                <details className="text-muted-foreground text-xs">
+                    <summary className="cursor-pointer select-none">Show details</summary>
+                    <p className="mt-1 break-words">{detail}</p>
+                </details>
             ) : null}
         </div>
     );
@@ -322,8 +342,7 @@ function isStale(syncedAt: number): boolean {
 const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 
 /** "5 minutes ago", "just now", … from a `syncedAt` timestamp. */
-function formatRelative(timestamp: number | undefined): string {
-    if (!timestamp) return 'never';
+function formatRelative(timestamp: number): string {
     const seconds = Math.round((timestamp - Date.now()) / 1000);
     if (Math.abs(seconds) < 60) return 'just now';
     const minutes = Math.round(seconds / 60);

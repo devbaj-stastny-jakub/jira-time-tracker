@@ -39,6 +39,11 @@ pub fn setup(app: &App) -> tauri::Result<()> {
     // behavior lets it ride along to whatever Space is active and stay put.
     panel.set_level((NSMainMenuWindowLevel + 1) as i32);
     panel.set_style_mask(NONACTIVATING_PANEL);
+    // AppKit draws its drop shadow against the window's rectangular content
+    // view, not the rounded card we paint inside — leaving visible "ears" at
+    // the corners. The card supplies its own `shadow-2xl` in CSS, so we drop
+    // the native one.
+    panel.set_has_shadow(false);
     panel.set_collection_behaviour(
         NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary

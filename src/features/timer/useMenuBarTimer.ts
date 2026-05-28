@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import { formatElapsedMinutes } from './format';
+import { formatElapsed } from './format';
 import {
     hookCloseToHide,
     setDiscardTimer,
@@ -25,7 +25,7 @@ const isMainWindow = () => inTauri && getCurrentWindow().label === 'main';
 /**
  * Drives the macOS menu bar widget from the running app. Mount once near the
  * root: it wires close-to-hide + click navigation, then mirrors the active
- * timer's elapsed minutes into the tray title (ticking only while running).
+ * timer's elapsed time into the tray title (ticking only while running).
  */
 export function useMenuBarTimer(): void {
     const navigate = useNavigate();
@@ -46,13 +46,13 @@ export function useMenuBarTimer(): void {
         const update = () => {
             if (active) {
                 const ms = Date.now() - new Date(active.startAt).getTime();
-                void syncTray(true, formatElapsedMinutes(ms));
+                void syncTray(true, formatElapsed(ms));
             } else {
                 void syncTray(false, 'idle');
             }
         };
         update();
-        // Only tick while a timer runs; syncTray repaints just on minute rollover.
+        // Only tick while a timer runs; syncTray repaints just on second rollover.
         if (!active) return;
         const id = setInterval(update, 1000);
         return () => clearInterval(id);

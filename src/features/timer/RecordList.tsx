@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { Clock, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+    AlertTriangle,
+    CheckCircle2,
+    CircleDashed,
+    Clock,
+    MoreVertical,
+    Pencil,
+    PencilLine,
+    Trash2,
+    Upload,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 import type { Project } from '@/shared/projects/api';
 import type { Tag } from '@/shared/tags/api';
@@ -30,12 +41,24 @@ import {
     EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { initialFromRecord } from './form-state';
 import { formatClock, formatDuration, ticketKey } from './format';
 import { projectColor } from './projectColor';
 import { RecordForm } from './RecordForm';
-import type { TimeRecord } from './records';
-import { useDeleteRecord, useUpdateRecord } from './useRecords';
+import { syncStateOf, type SyncState, type TimeRecord } from './records';
+import {
+    useDeleteRecord,
+    useIsSyncing,
+    usePushRecord,
+    useUpdateRecord,
+} from './useRecords';
 
 interface RecordListProps {
     records: TimeRecord[] | undefined;
@@ -101,6 +124,9 @@ function RecordRow({ record }: { record: TimeRecord }) {
 
     const project = projects?.find((p) => p.id === record.projectId);
     const recordTags = (tags ?? []).filter((t) => record.tagIds.includes(t.id));
+    const state = syncStateOf(record);
+    const isSyncing = useIsSyncing();
+    const push = usePushRecord();
 
     return (
         <li className="flex items-center gap-3.5 rounded-2xl bg-card px-4 py-3 ring-1 ring-border transition-colors hover:bg-muted/40">
@@ -132,6 +158,8 @@ function RecordRow({ record }: { record: TimeRecord }) {
                 </div>
             </div>
 
+            <SyncBadge state={state} error={record.lastSyncError} />
+
             <span className="font-mono text-sm font-semibold tabular-nums">
                 {formatDuration(record.startAt, record.endAt)}
             </span>
@@ -148,6 +176,24 @@ function RecordRow({ record }: { record: TimeRecord }) {
                     <DropdownMenuItem onClick={() => setEditing(true)}>
                         <Pencil />
                         Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        disabled={isSyncing || state === 'synced'}
+                        onClick={() => {
+                            push.mutate(record, {
+                                onSuccess: () => {
+                                    toast.success('Synced to Jira');
+                                },
+                                onError: (cause) => {
+                                    const message =
+                                        cause instanceof Error ? cause.message : String(cause);
+                                    toast.error(`Sync failed: ${message}`);
+                                },
+                            });
+                        }}
+                    >
+                        <Upload />
+                        {state === 'errored' ? 'Retry sync' : 'Sync now'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -178,6 +224,64 @@ function RecordRow({ record }: { record: TimeRecord }) {
         </li>
     );
 }
+
+/**
+ * Per-row sync indicator: one chip per state. Error shows the underlying
+ * message in a tooltip so the user can see *why* without opening anything.
+ * Synced shows a soft check so the user can confirm at a glance; never/stale
+ * use neutral/amber to flag "you have unpushed work here".
+ */
+function SyncBadge({ state, error }: { state: SyncState; error: string | null }) {
+    const config = SYNC_BADGE_CONFIG[state];
+    const Icon = config.icon;
+    const chip = (
+        <span
+            className={cn(
+                'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[0.625rem] font-medium',
+                config.tone,
+            )}
+            aria-label={`Sync state: ${config.label}`}
+        >
+            <Icon className="size-3" />
+            {config.label}
+        </span>
+    );
+    if (state !== 'errored' || !error) return chip;
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger render={chip} />
+                <TooltipContent>{error}</TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+}
+
+const SYNC_BADGE_CONFIG: Record<
+    SyncState,
+    { icon: typeof CheckCircle2; tone: string; label: string }
+> = {
+    never: {
+        icon: CircleDashed,
+        tone: 'border-muted-foreground/20 bg-muted/40 text-muted-foreground',
+        label: 'Pending',
+    },
+    synced: {
+        icon: CheckCircle2,
+        tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        label: 'Synced',
+    },
+    stale: {
+        icon: PencilLine,
+        tone: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        label: 'Edited',
+    },
+    errored: {
+        icon: AlertTriangle,
+        tone: 'border-destructive/30 bg-destructive/10 text-destructive',
+        label: 'Failed',
+    },
+};
 
 function EditRecordDialog({
     record,

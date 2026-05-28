@@ -4,10 +4,11 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 
 import { DayTimeline } from '@/features/timer/DayTimeline';
 import { formatDurationMs } from '@/features/timer/format';
-import { type TimeRecord } from '@/features/timer/records';
+import { syncStateOf, type TimeRecord } from '@/features/timer/records';
 import { RecordList } from '@/features/timer/RecordList';
+import { SyncDayButton } from '@/features/timer/SyncDayButton';
 import { useActiveTimer } from '@/features/timer/useActiveTimer';
-import { useRecordsBetween } from '@/features/timer/useRecords';
+import { usePendingDeletesInRange, useRecordsBetween } from '@/features/timer/useRecords';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -122,6 +123,48 @@ function durationMs(r: TimeRecord): number {
     return new Date(r.endAt).getTime() - new Date(r.startAt).getTime();
 }
 
+/**
+ * Cell-level sync rollup. Aggregates the per-record states into a single
+ * dominant state for the day, in priority order: errored > stale > pending >
+ * synced. `null` means "no records" — no dot to draw.
+ *
+ * Soft-deleted-but-not-yet-pushed rows are added separately by the calendar
+ * after this function runs, via {@link escalate} — they need their own query
+ * because `listRecordsBetween` filters them out.
+ */
+type DaySyncState = 'errored' | 'stale' | 'pending' | 'synced';
+
+const SYNC_PRIORITY: Record<DaySyncState, number> = {
+    synced: 0,
+    pending: 1,
+    stale: 2,
+    errored: 3,
+};
+
+/** Pick the worse of two states. Used to fold pending deletes into the rollup. */
+function escalate(
+    current: DaySyncState | undefined,
+    candidate: DaySyncState,
+): DaySyncState {
+    if (!current) return candidate;
+    return SYNC_PRIORITY[candidate] > SYNC_PRIORITY[current] ? candidate : current;
+}
+
+function dominantSyncState(records: TimeRecord[]): DaySyncState | null {
+    if (records.length === 0) return null;
+    let hasStale = false;
+    let hasPending = false;
+    for (const r of records) {
+        const s = syncStateOf(r);
+        if (s === 'errored') return 'errored';
+        if (s === 'stale') hasStale = true;
+        else if (s === 'never') hasPending = true;
+    }
+    if (hasStale) return 'stale';
+    if (hasPending) return 'pending';
+    return 'synced';
+}
+
 function localDayKey(iso: string): string {
     const d = new Date(iso);
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -161,6 +204,7 @@ function CalendarPage() {
     }, [days]);
 
     const { data: records, isPending } = useRecordsBetween(rangeStartUtc, rangeEndUtc);
+    const { data: pendingDeletes } = usePendingDeletesInRange(rangeStartUtc, rangeEndUtc);
     const { data: active } = useActiveTimer();
 
     // Re-render once a minute while a timer runs so the running contribution
@@ -191,6 +235,23 @@ function CalendarPage() {
         }
         return map;
     }, [recordsByDay]);
+
+    const syncByDay = useMemo(() => {
+        const map = new Map<string, DaySyncState>();
+        for (const [k, rs] of recordsByDay) {
+            const state = dominantSyncState(rs);
+            if (state) map.set(k, state);
+        }
+        // Pending deletes aren't in `recordsByDay` (filtered by deleted_at), so
+        // fold them in here. A failed prior delete attempt is `errored`; otherwise
+        // it's pending work like any other unpushed change.
+        for (const d of pendingDeletes ?? []) {
+            const k = localDayKey(d.startAt);
+            const candidate: DaySyncState = d.lastSyncError ? 'errored' : 'pending';
+            map.set(k, escalate(map.get(k), candidate));
+        }
+        return map;
+    }, [recordsByDay, pendingDeletes]);
 
     const selectedRecords = recordsByDay.get(dayKey(selected)) ?? [];
 
@@ -254,6 +315,7 @@ function CalendarPage() {
 
                         {days.map((d) => {
                             const isToday = isSameDay(d, today);
+                            const k = dayKey(d);
                             return (
                                 <DayCell
                                     key={d.toISOString()}
@@ -262,10 +324,11 @@ function CalendarPage() {
                                     today={today}
                                     selected={selected}
                                     totalMs={
-                                        (totalsByDay.get(dayKey(d)) ?? 0) +
+                                        (totalsByDay.get(k) ?? 0) +
                                         (isToday ? liveMs : 0)
                                     }
                                     isRecording={isToday && Boolean(active)}
+                                    syncState={syncByDay.get(k) ?? null}
                                     onSelect={() => setSelected(d)}
                                 />
                             );
@@ -419,6 +482,7 @@ function DayCell({
     selected,
     totalMs,
     isRecording,
+    syncState,
     onSelect,
 }: {
     date: Date;
@@ -427,6 +491,7 @@ function DayCell({
     selected: Date;
     totalMs: number;
     isRecording: boolean;
+    syncState: DaySyncState | null;
     onSelect: () => void;
 }) {
     const inMonth = date.getMonth() === viewedMonth;
@@ -474,15 +539,18 @@ function DayCell({
                 >
                     {date.getDate()}
                 </span>
-                {isRecording ? (
-                    <span
-                        className="relative mt-1 flex size-1.5 items-center justify-center"
-                        aria-label="Recording"
-                    >
-                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-60" />
-                        <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
-                    </span>
-                ) : null}
+                <div className="mt-1 flex items-center gap-1">
+                    {inMonth && syncState ? <DaySyncDot state={syncState} /> : null}
+                    {isRecording ? (
+                        <span
+                            className="relative flex size-1.5 items-center justify-center"
+                            aria-label="Recording"
+                        >
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-60" />
+                            <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+                        </span>
+                    ) : null}
+                </div>
             </div>
 
             {hasRecords ? (
@@ -507,6 +575,29 @@ function DayCell({
     );
 }
 
+/**
+ * Tiny day-cell sync rollup. Synced shows a soft emerald check (positive
+ * affirmation that the day's work is in Jira); pending / stale / errored show
+ * a colored dot. `title` doubles as accessible label and native browser tooltip.
+ */
+function DaySyncDot({ state }: { state: DaySyncState }) {
+    const config = DAY_SYNC_DOT_CONFIG[state];
+    return (
+        <span
+            aria-label={config.label}
+            title={config.label}
+            className={cn('size-1.5 rounded-full', config.color)}
+        />
+    );
+}
+
+const DAY_SYNC_DOT_CONFIG: Record<DaySyncState, { color: string; label: string }> = {
+    errored: { color: 'bg-destructive', label: 'Sync failed' },
+    stale: { color: 'bg-amber-500', label: 'Edited since last sync' },
+    pending: { color: 'bg-muted-foreground/50', label: 'Not yet synced' },
+    synced: { color: 'bg-emerald-500/70', label: 'Synced to Jira' },
+};
+
 function SelectedDayDetail({
     date,
     today,
@@ -529,9 +620,12 @@ function SelectedDayDetail({
     return (
         <div className="space-y-6">
             <section className="space-y-3">
-                <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
-                    {eyebrow}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
+                        {eyebrow}
+                    </p>
+                    <SyncDayButton date={date} />
+                </div>
                 <DayTimeline date={date} records={records} />
             </section>
 

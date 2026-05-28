@@ -81,6 +81,25 @@ fn migrations() -> Vec<Migration> {
             ",
             kind: MigrationKind::Up,
         },
+        // Per-record sync state for the manual push-to-Everit feature. All four
+        // columns are nullable so existing rows survive without backfill.
+        //   `everit_worklog_id` — remote ID after a successful push; null = never pushed.
+        //   `synced_at`         — last successful push timestamp; `updated_at > synced_at` ⇒ stale.
+        //   `last_sync_error`   — last failure message, surfaced on the row.
+        //   `deleted_at`        — soft-delete marker; rows with this set are hidden
+        //                         from list queries and pushed as DELETEs (then hard-removed).
+        // States are derived from these four columns + `updated_at`; no status enum.
+        Migration {
+            version: 3,
+            description: "add_sync_state_to_time_records",
+            sql: "
+                ALTER TABLE time_records ADD COLUMN everit_worklog_id TEXT;
+                ALTER TABLE time_records ADD COLUMN synced_at         TEXT;
+                ALTER TABLE time_records ADD COLUMN last_sync_error   TEXT;
+                ALTER TABLE time_records ADD COLUMN deleted_at        TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

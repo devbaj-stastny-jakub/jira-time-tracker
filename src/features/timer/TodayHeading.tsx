@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 import { formatDurationMs } from './format';
+import { SyncDayButton } from './SyncDayButton';
 import { useActiveTimer } from './useActiveTimer';
 import { useTodayRecords } from './useRecords';
 
@@ -70,6 +71,7 @@ export function TodayHeading() {
                 <h1 className="font-heading text-3xl font-semibold tracking-tight">
                     {greeting(nowDate.getHours())}
                 </h1>
+                <SyncDayButton date={nowDate} />
             </div>
 
             <div className="animate-in fade-in slide-in-from-right-2 flex min-w-56 flex-col gap-2 rounded-2xl bg-card px-4 py-2.5 ring-1 ring-border duration-500">

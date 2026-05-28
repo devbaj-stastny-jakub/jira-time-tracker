@@ -94,6 +94,14 @@ export async function deleteRecord(id: string): Promise<void> {
 /** Records that started during the current local day, newest first. */
 export async function listTodayRecords(): Promise<TimeRecord[]> {
     const { startUtc, endUtc } = localDayBoundsUtc();
+    return listRecordsBetween(startUtc, endUtc);
+}
+
+/** Records whose `start_at` falls in `[startUtc, endUtc)`, newest first. */
+export async function listRecordsBetween(
+    startUtc: string,
+    endUtc: string,
+): Promise<TimeRecord[]> {
     const rows = await db
         .select()
         .from(timeRecords)

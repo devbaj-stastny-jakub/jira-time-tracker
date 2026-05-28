@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 
+import { DayTimeline } from '@/features/timer/DayTimeline';
 import { ManualTab } from '@/features/timer/ManualTab';
 import { RecordList } from '@/features/timer/RecordList';
 import { TimerTab } from '@/features/timer/TimerTab';
 import { TodayHeading } from '@/features/timer/TodayHeading';
-import { TodayTimeline } from '@/features/timer/TodayTimeline';
+import { useTodayRecords } from '@/features/timer/useRecords';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Route = createFileRoute('/_app/')({
@@ -12,6 +13,9 @@ export const Route = createFileRoute('/_app/')({
 });
 
 function TimerPage() {
+    const { data: records, isPending } = useTodayRecords();
+    const today = new Date();
+
     return (
         <div className="mx-auto w-full max-w-3xl space-y-8">
             <TodayHeading />
@@ -51,10 +55,10 @@ function TimerPage() {
                 <p className="text-[0.625rem] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase">
                     Today’s timeline
                 </p>
-                <TodayTimeline />
+                <DayTimeline date={today} records={records ?? []} />
             </section>
 
-            <RecordList />
+            <RecordList records={records} isPending={isPending} />
         </div>
     );
 }

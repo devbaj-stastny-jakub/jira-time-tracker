@@ -35,12 +35,22 @@ import { formatClock, formatDuration, ticketKey } from './format';
 import { projectColor } from './projectColor';
 import { RecordForm } from './RecordForm';
 import type { TimeRecord } from './records';
-import { useDeleteRecord, useTodayRecords, useUpdateRecord } from './useRecords';
+import { useDeleteRecord, useUpdateRecord } from './useRecords';
 
-/** Today's records, newest first, each editable and deletable. */
-export function RecordList() {
-    const { data: records, isPending } = useTodayRecords();
+interface RecordListProps {
+    records: TimeRecord[] | undefined;
+    isPending: boolean;
+    emptyTitle?: string;
+    emptyDescription?: string;
+}
 
+/** A list of records, newest first, each editable and deletable. */
+export function RecordList({
+    records,
+    isPending,
+    emptyTitle = 'No entries today yet',
+    emptyDescription = 'Start the timer or add a manual entry to track your time.',
+}: RecordListProps) {
     if (isPending) {
         return (
             <div className="space-y-2">
@@ -57,10 +67,8 @@ export function RecordList() {
                     <EmptyMedia variant="icon">
                         <Clock />
                     </EmptyMedia>
-                    <EmptyTitle>No entries today yet</EmptyTitle>
-                    <EmptyDescription>
-                        Start the timer or add a manual entry to track your time.
-                    </EmptyDescription>
+                    <EmptyTitle>{emptyTitle}</EmptyTitle>
+                    <EmptyDescription>{emptyDescription}</EmptyDescription>
                 </EmptyHeader>
             </Empty>
         );

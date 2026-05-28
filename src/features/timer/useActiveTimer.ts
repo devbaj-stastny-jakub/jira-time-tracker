@@ -9,7 +9,7 @@ import {
 import { notifyRecordsChanged, notifyTimerChanged } from './cross-window';
 import { roundDurationUp15Ms } from './format';
 import { type TimeRecord, createRecord, latestRecord } from './records';
-import { todayRecordsKey } from './useRecords';
+import { recordsRootKey, todayRecordsKey } from './useRecords';
 
 export const activeTimerKey = ['active-timer'] as const;
 
@@ -85,7 +85,7 @@ export function useStopTimer() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: activeTimerKey });
-            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            queryClient.invalidateQueries({ queryKey: recordsRootKey });
             notifyTimerChanged();
             notifyRecordsChanged();
         },

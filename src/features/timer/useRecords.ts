@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { notifyRecordsChanged } from './cross-window';
@@ -6,12 +5,15 @@ import {
     type RecordInput,
     createRecord,
     deleteRecord,
+    listRecordsBetween,
     listTodayRecords,
     updateRecord,
 } from './records';
-import { useActiveTimer } from './useActiveTimer';
 
+export const recordsRootKey = ['time-records'] as const;
 export const todayRecordsKey = ['time-records', 'today'] as const;
+export const recordsBetweenKey = (startUtc: string, endUtc: string) =>
+    ['time-records', 'range', startUtc, endUtc] as const;
 
 /** Today's records (local day), newest first. */
 export function useTodayRecords() {
@@ -21,29 +23,12 @@ export function useTodayRecords() {
     });
 }
 
-/**
- * Total tracked milliseconds for today: the sum of completed records plus the
- * live elapsed of the running timer (if any). Durations are summed in raw ms —
- * not per-record rounded minutes — so the number is exact. Re-renders once a
- * minute while a timer runs so the total keeps climbing without per-second churn.
- */
-export function useTodayTotal(): number {
-    const { data: records } = useTodayRecords();
-    const { data: active } = useActiveTimer();
-    const [now, setNow] = useState(() => Date.now());
-
-    useEffect(() => {
-        if (!active) return;
-        const id = setInterval(() => setNow(Date.now()), 60_000);
-        return () => clearInterval(id);
-    }, [active]);
-
-    const completed = (records ?? []).reduce(
-        (sum, r) => sum + (new Date(r.endAt).getTime() - new Date(r.startAt).getTime()),
-        0,
-    );
-    const running = active ? Math.max(0, now - new Date(active.startAt).getTime()) : 0;
-    return completed + running;
+/** Records whose `start_at` falls in `[startUtc, endUtc)`, newest first. */
+export function useRecordsBetween(startUtc: string, endUtc: string) {
+    return useQuery({
+        queryKey: recordsBetweenKey(startUtc, endUtc),
+        queryFn: () => listRecordsBetween(startUtc, endUtc),
+    });
 }
 
 export function useCreateRecord() {
@@ -51,7 +36,7 @@ export function useCreateRecord() {
     return useMutation({
         mutationFn: (input: RecordInput) => createRecord(input),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            queryClient.invalidateQueries({ queryKey: recordsRootKey });
             notifyRecordsChanged();
         },
     });
@@ -63,7 +48,7 @@ export function useUpdateRecord() {
         mutationFn: ({ id, input }: { id: string; input: RecordInput }) =>
             updateRecord(id, input),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            queryClient.invalidateQueries({ queryKey: recordsRootKey });
             notifyRecordsChanged();
         },
     });
@@ -74,7 +59,7 @@ export function useDeleteRecord() {
     return useMutation({
         mutationFn: (id: string) => deleteRecord(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: todayRecordsKey });
+            queryClient.invalidateQueries({ queryKey: recordsRootKey });
             notifyRecordsChanged();
         },
     });

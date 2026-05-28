@@ -12,18 +12,25 @@ import { formatClock, formatDuration, ticketKey } from './format';
 import { projectColor } from './projectColor';
 import type { TimeRecord } from './records';
 import { useActiveTimer } from './useActiveTimer';
-import { useTodayRecords } from './useRecords';
 
 const DAY_MIN = 24 * 60;
 /** Interior hour gridlines (every 3h); midnight/end are the track edges. */
 const HOUR_TICKS = [3, 6, 9, 12, 15, 18, 21] as const;
 const AXIS_LABELS = ['00', '06', '12', '18', '24'] as const;
 
-/** Local midnight (start of the current day) as an epoch-ms base. */
-function dayBase(): number {
-    const d = new Date();
+/** Local midnight of `date` as an epoch-ms base. */
+function dayBase(date: Date): number {
+    const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d.getTime();
+}
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -38,25 +45,26 @@ function span(base: number, startIso: string, endMs: number) {
 }
 
 /**
- * A minimal 24h track of today's worked time: hour gridlines, one
- * semi-transparent block per record (colored by project), the live running
- * timer, and a "now" marker. Hover a finished block for its detail.
+ * A 24h track of one day's worked time: hour gridlines, one semi-transparent
+ * block per record (colored by project), and — only when `date` is today — the
+ * live running timer plus a "now" marker. Hover a finished block for its detail.
  */
-export function TodayTimeline() {
-    const { data: records } = useTodayRecords();
+export function DayTimeline({ date, records }: { date: Date; records: TimeRecord[] }) {
     const { data: active } = useActiveTimer();
     const [now, setNow] = useState(() => Date.now());
+    const isToday = isSameLocalDay(date, new Date());
 
     // Advance the "now" marker (and the running block) once a minute — a minute
     // is invisibly small on a 24h bar, so per-second updates aren't worth it.
     useEffect(() => {
+        if (!isToday) return;
         const id = setInterval(() => setNow(Date.now()), 60_000);
         return () => clearInterval(id);
-    }, []);
+    }, [isToday]);
 
-    const base = dayBase();
-    const nowLeft = (clamp((now - base) / 60_000, 0, DAY_MIN) / DAY_MIN) * 100;
-    const runSpan = active ? span(base, active.startAt, now) : null;
+    const base = dayBase(date);
+    const nowLeft = isToday ? (clamp((now - base) / 60_000, 0, DAY_MIN) / DAY_MIN) * 100 : null;
+    const runSpan = isToday && active ? span(base, active.startAt, now) : null;
 
     return (
         <div className="space-y-1.5">
@@ -70,7 +78,7 @@ export function TodayTimeline() {
                     />
                 ))}
 
-                {(records ?? []).map((record) => (
+                {records.map((record) => (
                     <RecordBlock key={record.id} record={record} base={base} />
                 ))}
 
@@ -87,14 +95,15 @@ export function TodayTimeline() {
                     />
                 ) : null}
 
-                {/* "Now" marker: a slim red line capped with a dot at the top. */}
-                <div
-                    className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-rose-500"
-                    style={{ left: `${nowLeft}%` }}
-                    aria-label="Now"
-                >
-                    <span className="absolute -top-px left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-rose-500" />
-                </div>
+                {nowLeft !== null ? (
+                    <div
+                        className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-rose-500"
+                        style={{ left: `${nowLeft}%` }}
+                        aria-label="Now"
+                    >
+                        <span className="absolute -top-px left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-rose-500" />
+                    </div>
+                ) : null}
             </div>
 
             <div className="flex justify-between px-0.5 font-mono text-[0.625rem] font-medium tabular-nums text-muted-foreground/50">

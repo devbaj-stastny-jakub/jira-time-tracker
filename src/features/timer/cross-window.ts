@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { emit, listen } from '@tauri-apps/api/event';
 
 import { activeTimerKey } from './useActiveTimer';
-import { todayRecordsKey } from './useRecords';
+import { recordsRootKey } from './useRecords';
 
 /** True inside the Tauri webview; false in a plain-browser `vite` dev server. */
 const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -39,7 +39,7 @@ export function useCrossWindowSync(): void {
                 queryClient.invalidateQueries({ queryKey: activeTimerKey }),
             ),
             listen(RECORDS_CHANGED, () =>
-                queryClient.invalidateQueries({ queryKey: todayRecordsKey }),
+                queryClient.invalidateQueries({ queryKey: recordsRootKey }),
             ),
         ];
         return () => {
